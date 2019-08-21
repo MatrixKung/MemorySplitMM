@@ -4,6 +4,11 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 VisualStudioVersion = 16.0.29123.88
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "MSMM", "MSMM\MSMM.vcxproj", "{3730694A-6BDA-4B44-922A-3F0C6CCA0319}"
+	ProjectSection(ProjectDependencies) = postProject
+		{17E12380-6A4D-4218-AAC9-B23D041ED744} = {17E12380-6A4D-4218-AAC9-B23D041ED744}
+	EndProjectSection
+EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "libMSMM", "libMSMM\libMSMM.vcxproj", "{17E12380-6A4D-4218-AAC9-B23D041ED744}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -21,6 +26,14 @@ Global
 		{3730694A-6BDA-4B44-922A-3F0C6CCA0319}.Release|x64.Build.0 = Release|x64
 		{3730694A-6BDA-4B44-922A-3F0C6CCA0319}.Release|x86.ActiveCfg = Release|Win32
 		{3730694A-6BDA-4B44-922A-3F0C6CCA0319}.Release|x86.Build.0 = Release|Win32
+		{17E12380-6A4D-4218-AAC9-B23D041ED744}.Debug|x64.ActiveCfg = Debug|x64
+		{17E12380-6A4D-4218-AAC9-B23D041ED744}.Debug|x64.Build.0 = Debug|x64
+		{17E12380-6A4D-4218-AAC9-B23D041ED744}.Debug|x86.ActiveCfg = Debug|Win32
+		{17E12380-6A4D-4218-AAC9-B23D041ED744}.Debug|x86.Build.0 = Debug|Win32
+		{17E12380-6A4D-4218-AAC9-B23D041ED744}.Release|x64.ActiveCfg = Release|x64
+		{17E12380-6A4D-4218-AAC9-B23D041ED744}.Release|x64.Build.0 = Release|x64
+		{17E12380-6A4D-4218-AAC9-B23D041ED744}.Release|x86.ActiveCfg = Release|Win32
+		{17E12380-6A4D-4218-AAC9-B23D041ED744}.Release|x86.Build.0 = Release|Win32
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
