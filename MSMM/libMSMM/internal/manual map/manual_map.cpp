@@ -2,6 +2,37 @@
 
 namespace libMSMM::mm
 {
+	bool VerifyImage(void* pImage, const size_t ImageSize)
+	{
+		if (!pImage)
+		{
+			LOG_ERROR("pImage cannot be NULL");
+			return false;
+		}
+
+		if (!ImageSize)
+		{
+			LOG_ERROR("ImageSize cannot be 0");
+			return false;
+		}
+
+		const auto dosHeader = PE::GetDOSHeaders(pImage);
+		if (dosHeader->e_magic != IMAGE_DOS_SIGNATURE)
+		{
+			LOG_ERROR("Image DOS Header Currupt");
+			return false;
+		}
+
+		const auto ntHeader = PE::GetNTHeaders(pImage);
+		if (ntHeader->Signature != IMAGE_NT_SIGNATURE)
+		{
+			LOG_ERROR("Image NT Header Currupt");
+			return false;
+		}
+
+		return true;
+	}
+
 	bool AllocateSections(std::vector<sections::MappedSection>& SectionDirectory, PIMAGE_NT_HEADERS32 ntHeader, process::Process& Process )
 	{
 		const auto nSectionCount = ntHeader->FileHeader.NumberOfSections;
@@ -73,20 +104,15 @@ namespace libMSMM::mm
 	{
 		LOG_DEBUG("starting map");
 
-		// Grab our headers
-		const auto dosHeader = PE::GetDOSHeaders(pImage);
-		if (dosHeader->e_magic != IMAGE_DOS_SIGNATURE)
+		// Verify this is a good image
+		if (!VerifyImage(pImage, ImageSize))
 		{
-			LOG_ERROR("Image DOS Header Currupt");
 			return false;
 		}
 
+		// Grab our headers
+		const auto dosHeader = PE::GetDOSHeaders(pImage);
 		const auto ntHeader = PE::GetNTHeaders(pImage);
-		if (ntHeader->Signature != IMAGE_NT_SIGNATURE)
-		{
-			LOG_ERROR("Image NT Header Currupt");
-			return false;
-		}
 
 		std::vector<sections::MappedSection> SectionDirectory;
 		if (!AllocateSections(SectionDirectory, ntHeader, Process))
