@@ -30,6 +30,12 @@
     <ClInclude Include="internal\process\process.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="internal\utils\util.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="internal\portable exe\PE.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="pch.cpp">

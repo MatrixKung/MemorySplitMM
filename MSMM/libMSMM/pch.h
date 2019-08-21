@@ -1,6 +1,7 @@
 #pragma once
 // Windows Headers we need
 #include <Windows.h>
+#include <winternl.h>
 
 // STD headers we need
 #include <iostream>
@@ -15,5 +16,7 @@
 
 // Our own code
 #include "internal/log/log.h"
+#include "internal/utils/util.h"
+#include "internal/portable exe/PE.h"
 #include "internal/process/process.h"
 #include "internal/manual map/manual_map.h"
