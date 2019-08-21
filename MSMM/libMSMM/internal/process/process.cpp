@@ -61,10 +61,6 @@ namespace libMSMM::process
 	{
 		return m_ProcessId;
 	}
-	HANDLE Process::get_handle() const
-	{
-		return m_hOpenedProcess;
-	}
 	void* Process::AllocateMemory(size_t Size, DWORD protection)
 	{
 		return VirtualAllocEx(m_hOpenedProcess, nullptr, Size, MEM_COMMIT | MEM_RESERVE, protection);
