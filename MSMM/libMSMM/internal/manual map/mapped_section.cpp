@@ -9,15 +9,19 @@ namespace libMSMM::mm
 		m_isLocalLocked(false)
 	{
 		const auto AllocSize = m_Header.SizeOfRawData;
-		DWORD MemoryProtection = PAGE_READWRITE;
 
-		if (m_Header.Characteristics & IMAGE_SCN_MEM_EXECUTE)
+		if (AllocSize > 0) // dont bother allocating nothing
 		{
-			MemoryProtection = PAGE_EXECUTE_READWRITE;
-		}
+			DWORD MemoryProtection = PAGE_READWRITE;
 
-		m_pLocalAllocation = VirtualAlloc(nullptr, AllocSize, MEM_COMMIT | MEM_RESERVE, MemoryProtection);
-		m_pRemoteAllocation = Process.AllocateMemory(AllocSize, MemoryProtection);
+			if (m_Header.Characteristics & IMAGE_SCN_MEM_EXECUTE)
+			{
+				MemoryProtection = PAGE_EXECUTE_READWRITE;
+			}
+
+			m_pLocalAllocation = VirtualAlloc(nullptr, AllocSize, MEM_COMMIT | MEM_RESERVE, MemoryProtection);
+			m_pRemoteAllocation = Process.AllocateMemory(AllocSize, MemoryProtection);
+		}
 
 		LOG_INFO("Allocated {}\t size=0x{:08x} virtual=0x{:08x} local=0x{:08x} remote={:08x}",
 			std::string((char*)m_Header.Name).substr(0, 7),
