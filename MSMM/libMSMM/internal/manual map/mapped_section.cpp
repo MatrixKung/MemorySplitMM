@@ -71,6 +71,21 @@ namespace libMSMM::mm
 		return m_pLocalAllocation && m_pRemoteAllocation;
 	}
 
+	void* MappedSection::GetLocalAllocation()
+	{
+		return m_pLocalAllocation;
+	}
+
+	void* MappedSection::GetRemoteAllocation()
+	{
+		return m_pRemoteAllocation;
+	}
+
+	IMAGE_SECTION_HEADER& MappedSection::Header()
+	{
+		return m_Header;
+	}
+
 	void MappedSection::lock_remote()
 	{
 		m_isRemoteLocked = true;

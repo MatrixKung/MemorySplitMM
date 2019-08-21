@@ -12,6 +12,12 @@ namespace libMSMM::mm
 		MappedSection(const MappedSection& Copy);
 
 		bool is_valid() const;
+
+		void* GetLocalAllocation();
+		void* GetRemoteAllocation();
+		IMAGE_SECTION_HEADER& Header();
+
+		void WriteSectionToRemote();
 		void lock_remote();
 
 	private:
