@@ -3,7 +3,7 @@
 #ifdef _DEBUG
 #define LOG_DEBUG_LEVEL spdlog::level::trace
 #else
-#define LOG_DEBUG_LEVEL spdlog::level::warn
+#define LOG_DEBUG_LEVEL spdlog::level::trace
 #endif
 
 namespace libMSMM
