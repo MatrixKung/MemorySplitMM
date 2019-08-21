@@ -1,6 +1,6 @@
 #pragma once
 
-namespace libMSMM::mm
+namespace libMSMM::mm::sections
 {
 	class MappedSection
 	{
@@ -31,4 +31,6 @@ namespace libMSMM::mm
 		void* m_pRemoteAllocation;
 		void* m_pLocalAllocation;
 	};
+
+	MappedSection& VirtualToSection(const std::vector<MappedSection>& Sections);
 }

@@ -28,11 +28,11 @@ namespace libMSMM::mm
 		// for us unless we 'lock' the remote address - which we do once
 		// we know everything else is done
 		LOG_DEBUG("allocating sections");
-		std::vector<MappedSection> SectionDirectory;
+		std::vector<sections::MappedSection> SectionDirectory;
 
 		for (auto i = 0; i < nSectionCount; i++)
 		{
-			auto Section = MappedSection(pSections[i], Process);
+			auto Section = sections::MappedSection(pSections[i], Process);
 
 			if (!Section.is_valid())
 			{
@@ -42,19 +42,41 @@ namespace libMSMM::mm
 
 			SectionDirectory.push_back(Section);
 		}
+
+		// temp - allocate a backup section which can be used to fallback on when we dont know where the hell a address is
+		IMAGE_SECTION_HEADER BackupSectionHeader;
+		BackupSectionHeader.Name[0] = 0; // ""
+		BackupSectionHeader.VirtualAddress = 0;
+		BackupSectionHeader.SizeOfRawData = ntHeader->OptionalHeader.SizeOfImage;
+
+		auto BackupSection = sections::MappedSection(BackupSectionHeader, Process);
+
+		if (!BackupSection.is_valid())
+		{
+			LOG_ERROR("Could not allocate section properly!");
+			return false;
+		}
+		SectionDirectory.push_back(BackupSection);
+
 		LOG_DEBUG("allocated sections");
 
-		LOG_DEBUG("writing iamge to local sections");
+		LOG_DEBUG("writing image to local sections");
 		for (auto& Section : SectionDirectory)
 		{
-			if (auto pSectionData = Section.GetLocalAllocation())
+			if (Section.Header().VirtualAddress) // skip our backup section (which has a VA of 0)
 			{
-				LOG_TRACE("wrote {}", Section.Header().Name);
-				auto pImageData = (void*)((uint32_t)pImage + Section.Header().PointerToRawData);
-				memcpy(pSectionData, pImageData, Section.Header().SizeOfRawData);
+				if (auto pSectionData = Section.GetLocalAllocation()) // some sections may be size0 and not get allocated!
+				{
+					LOG_TRACE("wrote {}", std::string((char*)Section.Header().Name).substr(0, 7));
+					auto pImageData = (void*)((uint32_t)pImage + Section.Header().PointerToRawData);
+					memcpy(pSectionData, pImageData, Section.Header().SizeOfRawData);
+				}
 			}
 		}
 		LOG_DEBUG("all local sections written");
+
+		//LOG_DEBUG("starting standard relocations");
+		//LOG_DEBUG("finsihed standard relocations");
 
 		LOG_DEBUG("finished map");
 		return true;

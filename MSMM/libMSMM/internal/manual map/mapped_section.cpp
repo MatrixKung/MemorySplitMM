@@ -1,6 +1,6 @@
 #include <pch.h>
 
-namespace libMSMM::mm
+namespace libMSMM::mm::sections
 {
 	MappedSection::MappedSection(IMAGE_SECTION_HEADER Header, process::Process& Process) :
 		m_Header(Header),
