@@ -1,6 +1,6 @@
 #pragma once
 
-namespace libMSMM
+namespace libMSMM::util
 {
 
 }
