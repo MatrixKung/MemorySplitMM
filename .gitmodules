@@ -1,3 +1,6 @@
 [submodule "MSMM/vendor/spdlog"]
 	path = MSMM/vendor/spdlog
 	url = https://github.com/gabime/spdlog
+[submodule "MSMM/vendor/capstone"]
+	path = MSMM/vendor/capstone
+	url = https://github.com/aquynh/capstone

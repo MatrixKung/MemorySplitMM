@@ -13,13 +13,14 @@
 #include <spdlog/spdlog.h>
 #include <spdlog/sinks/stdout_color_sinks.h>
 #include <spdlog/sinks/basic_file_sink.h>
+#include <capstone/include/capstone/capstone.h>
 
 // Our own code
 #include "internal/log/log.h"
 #include "internal/utils/util.h"
 #include "internal/portable exe/PE.h"
 #include "internal/process/process.h"
-#include "internal/disassembler/disasssembler.h"
+#include "internal/disassembler/disassembler.h"
 #include "internal/manual map/manual_map.h"
 
 // Make sure we dont use x64 for now
