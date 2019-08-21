@@ -30,10 +30,16 @@ namespace libMSMM::mm
 
 		for (auto i = 0; i < nSectionCount; i++)
 		{
-			SectionDirectory.push_back(MappedSection(pSections[i], Process));
+			auto Section = MappedSection(pSections[i], Process);
+
+			if (!Section.is_valid())
+			{
+				LOG_ERROR("Could not allocate section properly!");
+				return false;
+			}
+
+			SectionDirectory.push_back(Section);
 		}
-
-
 
 		LOG_TRACE("finished map");
 		return true;
@@ -56,8 +62,8 @@ namespace libMSMM::mm
 		m_pLocalAllocation = VirtualAlloc(nullptr, AllocSize, MEM_COMMIT | MEM_RESERVE, MemoryProtection);
 		m_pRemoteAllocation = VirtualAllocEx(Process.get_handle(), nullptr, AllocSize, MEM_COMMIT | MEM_RESERVE, MemoryProtection);
 
-		LOG_INFO("MappedSection: {}\t size=0x{:08x} virtual=0x{:08x} local=0x{:08x} remote={:08x}", 
-			m_Header.Name, 
+		LOG_INFO("Allocated {}\t size=0x{:08x} virtual=0x{:08x} local=0x{:08x} remote={:08x}", 
+			std::string((char*)m_Header.Name).substr(0, 7), 
 			m_Header.SizeOfRawData, 
 			m_Header.VirtualAddress, 
 			(uint32_t)m_pLocalAllocation,
@@ -82,7 +88,9 @@ namespace libMSMM::mm
 		m_Header(Copy.m_Header),
 		m_hProcess(Copy.m_hProcess),
 		m_isRemoteLocked(false),
-		m_isLocalLocked(false)
+		m_isLocalLocked(false),
+		m_pLocalAllocation(Copy.m_pLocalAllocation),
+		m_pRemoteAllocation(Copy.m_pRemoteAllocation)
 	{
 		Copy.m_isLocalLocked = true;
 		Copy.m_isRemoteLocked = true;
@@ -90,6 +98,11 @@ namespace libMSMM::mm
 
 	bool MappedSection::is_valid() const
 	{
+		// if the header is of size 0, we cant allocate it, 
+		// but we still want it to be a valid section
+		if (m_Header.SizeOfRawData == 0)
+			return true;
+
 		return m_pLocalAllocation && m_pRemoteAllocation;
 	}
 	void MappedSection::lock_remote()
