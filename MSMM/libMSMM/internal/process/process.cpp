@@ -15,7 +15,7 @@ namespace libMSMM::process
 		{
 			while (Process32Next(snapshot, &entry) == TRUE)
 			{
-				if (stricmp(entry.szExeFile, ProcExeName) == 0)
+				if (strcmp(entry.szExeFile, ProcExeName) == 0)
 				{
 					ProcessId = entry.th32ProcessID;
 				}
