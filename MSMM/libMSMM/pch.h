@@ -15,4 +15,5 @@
 
 // Our own code
 #include "internal/log/log.h"
+#include "internal/process/process.h"
 #include "internal/manual map/manual_map.h"

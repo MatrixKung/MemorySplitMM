@@ -21,10 +21,13 @@
     <ClInclude Include="include\libMSMM.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="internal\manual_map.h">
+    <ClInclude Include="internal\log\log.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="internal\log\log.h">
+    <ClInclude Include="internal\manual map\manual_map.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="internal\process\process.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>
@@ -35,10 +38,13 @@
     <ClCompile Include="internal\exported.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="internal\manual_map.cpp">
+    <ClCompile Include="internal\log\log.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="internal\log\log.cpp">
+    <ClCompile Include="internal\manual map\manual_map.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="internal\process\process.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>

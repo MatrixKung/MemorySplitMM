@@ -169,13 +169,15 @@
   <ItemGroup>
     <ClInclude Include="include\libMSMM.h" />
     <ClInclude Include="internal\log\log.h" />
-    <ClInclude Include="internal\manual_map.h" />
+    <ClInclude Include="internal\manual map\manual_map.h" />
+    <ClInclude Include="internal\process\process.h" />
     <ClInclude Include="pch.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="internal\exported.cpp" />
     <ClCompile Include="internal\log\log.cpp" />
-    <ClCompile Include="internal\manual_map.cpp" />
+    <ClCompile Include="internal\manual map\manual_map.cpp" />
+    <ClCompile Include="internal\process\process.cpp" />
     <ClCompile Include="pch.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Create</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Create</PrecompiledHeader>
