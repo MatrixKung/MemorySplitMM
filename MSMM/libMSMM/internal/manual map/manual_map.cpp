@@ -25,7 +25,8 @@ namespace libMSMM::mm
 		const PIMAGE_SECTION_HEADER pSections = IMAGE_FIRST_SECTION(ntHeader);
 
 		// when this goes out of scope it will deallocate all sections 
-		// for us unless we 'lock' the remote address
+		// for us unless we 'lock' the remote address - which we do once
+		// we know everything else is done
 		std::vector<MappedSection> SectionDirectory;
 
 		for (auto i = 0; i < nSectionCount; i++)

@@ -11,7 +11,9 @@ namespace libMSMM::process
 
 		bool is_valid() const;
 		int get_id() const;
-		HANDLE get_handle() const;
+
+		void* AllocateMemory(size_t Size, DWORD protection);
+		void FreeMemory(void* pMemory);
 	private:
 
 		int m_ProcessId;

@@ -65,4 +65,11 @@ namespace libMSMM::process
 	{
 		return m_hOpenedProcess;
 	}
+	void* Process::AllocateMemory(size_t Size, DWORD protection)
+	{
+		return VirtualAllocEx(m_hOpenedProcess, nullptr, Size, MEM_COMMIT | MEM_RESERVE, protection);
+	}
+	void Process::FreeMemory(void* pMemory)
+	{
+	}
 }

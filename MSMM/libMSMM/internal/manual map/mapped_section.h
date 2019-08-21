@@ -13,6 +13,7 @@ namespace libMSMM::mm
 
 		bool is_valid() const;
 		void lock_remote();
+
 	private:
 		IMAGE_SECTION_HEADER m_Header;
 		process::Process& m_hProcess;

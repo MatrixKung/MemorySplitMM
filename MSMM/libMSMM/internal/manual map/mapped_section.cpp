@@ -17,7 +17,7 @@ namespace libMSMM::mm
 		}
 
 		m_pLocalAllocation = VirtualAlloc(nullptr, AllocSize, MEM_COMMIT | MEM_RESERVE, MemoryProtection);
-		m_pRemoteAllocation = VirtualAllocEx(Process.get_handle(), nullptr, AllocSize, MEM_COMMIT | MEM_RESERVE, MemoryProtection);
+		m_pRemoteAllocation = Process.AllocateMemory(AllocSize, MemoryProtection);
 
 		LOG_INFO("Allocated {}\t size=0x{:08x} virtual=0x{:08x} local=0x{:08x} remote={:08x}",
 			std::string((char*)m_Header.Name).substr(0, 7),
@@ -33,12 +33,14 @@ namespace libMSMM::mm
 		if (m_pLocalAllocation && !m_isLocalLocked)
 		{
 			VirtualFree(m_pLocalAllocation, NULL, MEM_RELEASE);
+			m_pLocalAllocation = nullptr;
 			LOG_TRACE("FREED LOCAL ALLOCATION OF {}", m_Header.Name);
 		}
 
 		if (m_pRemoteAllocation && !m_isRemoteLocked)
 		{
-			VirtualFreeEx(m_hProcess.get_handle(), m_pRemoteAllocation, NULL, MEM_RELEASE);
+			m_hProcess.FreeMemory(m_pRemoteAllocation);
+			m_pRemoteAllocation = nullptr;
 			LOG_TRACE("FREED REMOTE ALLOCATION OF {}", m_Header.Name);
 		}
 	}
