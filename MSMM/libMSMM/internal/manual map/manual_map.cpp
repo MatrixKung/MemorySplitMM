@@ -2,25 +2,8 @@
 
 namespace libMSMM::mm
 {
-	bool MapImage(void* pImage, const size_t ImageSize, process::Process& Process)
+	bool AllocateSections(std::vector<sections::MappedSection>& SectionDirectory, PIMAGE_NT_HEADERS32 ntHeader, process::Process& Process )
 	{
-		LOG_DEBUG("starting map");
-
-		// Grab our headers
-		const auto dosHeader = PE::GetDOSHeaders(pImage);
-		if (dosHeader->e_magic != IMAGE_DOS_SIGNATURE)
-		{
-			LOG_ERROR("Image DOS Header Currupt");
-			return false;
-		}
-
-		const auto ntHeader = PE::GetNTHeaders(pImage);
-		if (ntHeader->Signature != IMAGE_NT_SIGNATURE)
-		{
-			LOG_ERROR("Image NT Header Currupt");
-			return false;
-		}
-
 		const auto nSectionCount = ntHeader->FileHeader.NumberOfSections;
 		const PIMAGE_SECTION_HEADER pSections = IMAGE_FIRST_SECTION(ntHeader);
 
@@ -28,7 +11,6 @@ namespace libMSMM::mm
 		// for us unless we 'lock' the remote address - which we do once
 		// we know everything else is done
 		LOG_DEBUG("allocating sections");
-		std::vector<sections::MappedSection> SectionDirectory;
 
 		for (auto i = 0; i < nSectionCount; i++)
 		{
@@ -58,8 +40,12 @@ namespace libMSMM::mm
 		}
 		SectionDirectory.push_back(BackupSection);
 
-		LOG_DEBUG("allocated sections");
+		LOG_DEBUG("allocated {} sections", SectionDirectory.size());
+		return true;
+	}
 
+	void CopySections(std::vector<sections::MappedSection>& SectionDirectory, void* pImage)
+	{
 		LOG_DEBUG("writing image to local sections");
 		for (auto& Section : SectionDirectory)
 		{
@@ -74,9 +60,48 @@ namespace libMSMM::mm
 			}
 		}
 		LOG_DEBUG("all local sections written");
+	}
 
+	bool RunBasicRelocations(std::vector<sections::MappedSection>& SectionDirectory, PIMAGE_NT_HEADERS32 ntHeader)
+	{
 		//LOG_DEBUG("starting standard relocations");
 		//LOG_DEBUG("finsihed standard relocations");
+		return true;
+	}
+
+	bool MapImage(void* pImage, const size_t ImageSize, process::Process& Process)
+	{
+		LOG_DEBUG("starting map");
+
+		// Grab our headers
+		const auto dosHeader = PE::GetDOSHeaders(pImage);
+		if (dosHeader->e_magic != IMAGE_DOS_SIGNATURE)
+		{
+			LOG_ERROR("Image DOS Header Currupt");
+			return false;
+		}
+
+		const auto ntHeader = PE::GetNTHeaders(pImage);
+		if (ntHeader->Signature != IMAGE_NT_SIGNATURE)
+		{
+			LOG_ERROR("Image NT Header Currupt");
+			return false;
+		}
+
+		std::vector<sections::MappedSection> SectionDirectory;
+		if (!AllocateSections(SectionDirectory, ntHeader, Process))
+		{
+			LOG_ERROR("AllocateSections Failed!");
+			return false;
+		}
+
+		CopySections(SectionDirectory, pImage);
+		
+		if (!RunBasicRelocations(SectionDirectory, ntHeader))
+		{
+			LOG_ERROR("RunBasicRelocations Failed!");
+			return false;
+		}
 
 		LOG_DEBUG("finished map");
 		return true;
