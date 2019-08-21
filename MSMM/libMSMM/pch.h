@@ -20,3 +20,8 @@
 #include "internal/portable exe/PE.h"
 #include "internal/process/process.h"
 #include "internal/manual map/manual_map.h"
+
+// Make sure we dont use x64 for now
+#ifdef _WIN64
+#error 64 BIT CURRENTLY NOT SUPPORTED
+#endif
