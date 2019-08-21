@@ -179,6 +179,7 @@
     <ClCompile Include="internal\exported.cpp" />
     <ClCompile Include="internal\log\log.cpp" />
     <ClCompile Include="internal\manual map\manual_map.cpp" />
+    <ClCompile Include="internal\portable exe\PE.cpp" />
     <ClCompile Include="internal\process\process.cpp" />
     <ClCompile Include="pch.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Create</PrecompiledHeader>

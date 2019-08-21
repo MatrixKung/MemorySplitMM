@@ -53,5 +53,8 @@
     <ClCompile Include="internal\process\process.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="internal\portable exe\PE.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
 </Project>
