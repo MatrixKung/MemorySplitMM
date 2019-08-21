@@ -6,6 +6,13 @@ namespace libMSMM
 	{
 		log::Setup( LOG_DEBUG_LEVEL );
 
-		return true;
+		auto Process = process::Find(TargetAppExeName);
+		if (!Process.is_valid())
+		{
+			LOG_ERROR("Could not open process: {}", TargetAppExeName);
+			return false;
+		}
+
+		return mm::MapImage(pBinary, BinarySize, Process);
 	}
 }

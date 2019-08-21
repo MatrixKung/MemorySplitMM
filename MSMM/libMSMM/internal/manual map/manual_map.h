@@ -1,8 +1,6 @@
 #pragma once
 
-namespace libMSMM::MM
+namespace libMSMM::mm
 {
-
-	bool MapImage(const void* pImage, const size_t ImageSize, const char*);
-
+	bool MapImage(const void* pImage, const size_t ImageSize, process::Process& Process);
 }
