@@ -7,6 +7,7 @@ namespace libMSMM::process
 	public:
 		Process();
 		Process(int, HANDLE);
+		~Process();
 
 		bool is_valid() const;
 		int get_id() const;
@@ -15,7 +16,6 @@ namespace libMSMM::process
 
 		int m_ProcessId;
 		HANDLE m_hOpenedProcess;
-
 	};
 
 	Process Find(const char* ProcExeName);

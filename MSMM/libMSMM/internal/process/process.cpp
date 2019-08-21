@@ -44,6 +44,13 @@ namespace libMSMM::process
 		m_hOpenedProcess(handle)
 	{
 	}
+	Process::~Process()
+	{
+		if (m_hOpenedProcess)
+		{
+			CloseHandle(m_hOpenedProcess);
+		}
+	}
 
 	bool Process::is_valid() const
 	{
