@@ -6,7 +6,9 @@ namespace libMSMM::mm::sections
 		m_Header(Header),
 		m_hProcess(Process),
 		m_isRemoteLocked(false),
-		m_isLocalLocked(false)
+		m_isLocalLocked(false),
+		m_pLocalAllocation(0),
+		m_pRemoteAllocation(0)
 	{
 		const auto AllocSize = m_Header.SizeOfRawData;
 
@@ -81,7 +83,7 @@ namespace libMSMM::mm::sections
 		return m_pRemoteAllocation;
 	}
 
-	IMAGE_SECTION_HEADER& MappedSection::Header()
+	const IMAGE_SECTION_HEADER& MappedSection::Header() const
 	{
 		return m_Header;
 	}
@@ -89,5 +91,20 @@ namespace libMSMM::mm::sections
 	void MappedSection::lock_remote()
 	{
 		m_isRemoteLocked = true;
+	}
+
+	const MappedSection& VAToSec(const SectionDir& Sections, DWORD VA)
+	{
+		for (auto& Section : Sections)
+		{
+			auto SectionVA = Section.Header().VirtualAddress;
+			auto SectionSize = Section.Header().SizeOfRawData;
+			if (SectionVA <= VA && SectionVA + SectionSize > VA)
+			{
+				return Section;
+			}
+		}
+
+		return Sections.back(); // if we fail - return the last section (we assume this is the backup section)
 	}
 }

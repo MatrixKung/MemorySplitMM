@@ -15,10 +15,21 @@ namespace libMSMM::mm::sections
 
 		void* GetLocalAllocation();
 		void* GetRemoteAllocation();
-		IMAGE_SECTION_HEADER& Header();
+		const IMAGE_SECTION_HEADER& Header() const;
 
 		void WriteSectionToRemote();
 		void lock_remote();
+
+		template<typename T>
+		T RelocateVAToLocal(DWORD VA) const
+		{
+			return (T)(VA + (DWORD)m_pLocalAllocation);
+		}
+		template<typename T>
+		T RelocateVAToRemote(DWORD VA) const
+		{
+			return (T)(VA + (DWORD)m_pRemoteAllocation);
+		}
 
 	private:
 		IMAGE_SECTION_HEADER m_Header;
@@ -32,5 +43,21 @@ namespace libMSMM::mm::sections
 		void* m_pLocalAllocation;
 	};
 
-	MappedSection& VirtualToSection(const std::vector<MappedSection>& Sections);
+	typedef std::vector<sections::MappedSection> SectionDir;
+
+	const MappedSection& VAToSec(const SectionDir& Sections, DWORD VA);
+
+	template<typename T = void*>
+	T VAToLocalPtr(const SectionDir& Sections, DWORD VA)
+	{
+		auto& Sec = VAToSec(Sections, VA);
+		return Sec.RelocateVAToLocal<T>(VA);
+	}
+
+	template<typename T = void*>
+	T VAToRemotePtr(const SectionDir& Sections, DWORD VA)
+	{
+		const auto& Sec = VAToSec(Sections, VA);
+		return Sec.RelocateVAToRemote<T>(VA);
+	}
 }

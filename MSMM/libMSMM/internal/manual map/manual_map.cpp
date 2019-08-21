@@ -33,7 +33,7 @@ namespace libMSMM::mm
 		return true;
 	}
 
-	bool AllocateSections(std::vector<sections::MappedSection>& SectionDirectory, PIMAGE_NT_HEADERS32 ntHeader, process::Process& Process )
+	bool AllocateSections(sections::SectionDir& SectionDirectory, PIMAGE_NT_HEADERS32 ntHeader, process::Process& Process )
 	{
 		const auto nSectionCount = ntHeader->FileHeader.NumberOfSections;
 		const PIMAGE_SECTION_HEADER pSections = IMAGE_FIRST_SECTION(ntHeader);
@@ -75,7 +75,7 @@ namespace libMSMM::mm
 		return true;
 	}
 
-	void CopySections(std::vector<sections::MappedSection>& SectionDirectory, void* pImage)
+	void CopySections(sections::SectionDir& SectionDirectory, void* pImage)
 	{
 		LOG_DEBUG("writing image to local sections");
 		for (auto& Section : SectionDirectory)
@@ -93,10 +93,73 @@ namespace libMSMM::mm
 		LOG_DEBUG("all local sections written");
 	}
 
-	bool RunBasicRelocations(std::vector<sections::MappedSection>& SectionDirectory, PIMAGE_NT_HEADERS32 ntHeader)
+	bool RunBasicRelocations(sections::SectionDir& SectionDirectory, PIMAGE_NT_HEADERS32 ntHeader)
 	{
-		//LOG_DEBUG("starting standard relocations");
-		//LOG_DEBUG("finsihed standard relocations");
+		LOG_DEBUG("starting standard relocations");
+
+		const auto dataDir = ntHeader->OptionalHeader.DataDirectory[IMAGE_DIRECTORY_ENTRY_BASERELOC];
+
+		const auto nRelocSize = dataDir.Size;
+		const auto vaFirstReloc = dataDir.VirtualAddress;
+		const auto pFirstReloc = sections::VAToLocalPtr<PIMAGE_BASE_RELOCATION>( SectionDirectory, vaFirstReloc );
+
+		auto DebugRelocationCounter = 0;
+		for (
+			auto currentReloc = pFirstReloc;
+			(uint32_t)currentReloc < (uint32_t)pFirstReloc + nRelocSize;
+			currentReloc = (PIMAGE_BASE_RELOCATION)((uint32_t)currentReloc + currentReloc->SizeOfBlock)
+			)
+		{
+			if (currentReloc->SizeOfBlock == 0)
+			{
+				break;
+			}
+
+			auto nRelocCount = (currentReloc->SizeOfBlock - sizeof(IMAGE_BASE_RELOCATION)) / sizeof(uint16_t);
+			auto vaRelocationBase = currentReloc->VirtualAddress;
+			auto pRelocationItems = (uint16_t*)((uint32_t)currentReloc + sizeof(IMAGE_BASE_RELOCATION));
+
+			for (auto i = 0; i < nRelocCount; i++)
+			{
+				const auto RelocationOffset = pRelocationItems[i] & 0xfff;
+				const auto RelocationType = pRelocationItems[i] >> 12;
+
+				if (RelocationType == IMAGE_REL_BASED_HIGHLOW)
+				{
+					auto vaRelocation = vaRelocationBase + RelocationOffset;
+					auto pRelocation = sections::VAToLocalPtr<uint32_t*>(SectionDirectory, vaRelocation);
+
+					if (!pRelocation)
+					{
+						LOG_ERROR("Could not resolve a relocation");
+						return false;
+					}
+
+					auto vaRelocationTarget = *pRelocation;
+					auto pRelocationTarget = sections::VAToRemotePtr<uint32_t>(SectionDirectory, vaRelocationTarget);
+
+					if (!pRelocation)
+					{
+						LOG_ERROR("Could not resolve a relocation");
+						return false;
+					}
+
+					*pRelocation = pRelocationTarget;
+					DebugRelocationCounter++;
+				}
+				else if (RelocationType == IMAGE_REL_BASED_ABSOLUTE)
+				{
+					// ABS == we dont need to reloc it
+				}
+				else
+				{
+					LOG_ERROR("UNABLE TO RELOCATE ITEM: TYPE=0x{:04x}", RelocationType);
+					return false;
+				}
+			}
+		}
+
+		LOG_DEBUG("finsihed {} standard relocations", DebugRelocationCounter);
 		return true;
 	}
 
@@ -114,7 +177,7 @@ namespace libMSMM::mm
 		const auto dosHeader = PE::GetDOSHeaders(pImage);
 		const auto ntHeader = PE::GetNTHeaders(pImage);
 
-		std::vector<sections::MappedSection> SectionDirectory;
+		sections::SectionDir SectionDirectory;
 		if (!AllocateSections(SectionDirectory, ntHeader, Process))
 		{
 			LOG_ERROR("AllocateSections Failed!");
@@ -128,6 +191,7 @@ namespace libMSMM::mm
 			LOG_ERROR("RunBasicRelocations Failed!");
 			return false;
 		}
+
 
 		LOG_DEBUG("finished map");
 		return true;
