@@ -1,8 +1,8 @@
 #include <pch.h>
+#include "libMSMM.h"
 
 int main(int argc, char** argv)
 {
-	std::cout << argc;
 	if (argc != 3)
 	{
 		std::cout << "please execute in following format:\n \tMSMM.exe <BINARY_PATH> <TARGET_APP_NAME>" << std::endl;
@@ -35,6 +35,14 @@ int main(int argc, char** argv)
 		return 0;
 	}
 
-	std::cin.get();
+	if (libMSMM::MapImage(LoadedBinary.data(), LoadedBinary.size(), Target_App_Name))
+	{
+		std::cout << "Successfully injected binary!" << std::endl;
+	}
+	else
+	{
+		std::cout << "Injection failed" << std::endl;
+	}
+
 	return 0;
 }
