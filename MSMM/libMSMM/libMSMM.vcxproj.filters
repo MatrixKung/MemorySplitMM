@@ -39,7 +39,7 @@
     <ClInclude Include="internal\manual map\mapped_section.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="internal\disassembler\disasssembler.h">
+    <ClInclude Include="internal\disassembler\disassembler.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

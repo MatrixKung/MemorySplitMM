@@ -15,16 +15,11 @@ namespace libMSMM::disassembler
 		}
 
 		cs_insn* CurrentInstruction = cs_malloc(hCapstone);
-		if (CurrentInstruction)
-		{
-			LOG_ERROR("failed to allocate instruction buffer");
-			return false;
-		}
-
+		
 		uint8_t* pFirst = (uint8_t*)pCode;
 		size_t InstrucitonSize = CodeSize;
 		uint64_t Start = (uint64_t)pFirst;
-		while (cs_disasm_iter(hCapstone, &pFirst, &InstrucitonSize, &Start, CurrentInstruction))
+		while (cs_disasm_iter(hCapstone, (const uint8_t**)&pFirst, &InstrucitonSize, &Start, CurrentInstruction))
 		{
 			output.push_back( *CurrentInstruction );
 		}
