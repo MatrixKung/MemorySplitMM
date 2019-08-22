@@ -16,6 +16,9 @@ namespace libMSMM::process
 		void FreeMemory(void* pMemory);
 
 		void WriteMemory(void* pLocalBuffer, void* pDestBuffer, size_t BufferSize);
+
+		HMODULE GetRemoteModule(const char* pModuleName);
+		uint32_t GetRemoteFunction(HMODULE, const char* pFunctionName);
 	private:
 
 		int m_ProcessId;

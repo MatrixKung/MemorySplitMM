@@ -163,7 +163,7 @@ namespace libMSMM::mm
 		return true;
 	}
 	
-	void RelReloc(sections::SectionDir& SectionDirectory, cs_insn& Instruction, uint32_t offset, sections::MappedSection& CurrentSection)
+	void RelReloc(sections::SectionDir& SectionDirectory, disassembler::instruction& Instruction, uint32_t offset)
 	{
 		const uint32_t pAddress = Instruction.address;
 		const uint32_t pNextInstruction = pAddress + Instruction.size;
@@ -203,7 +203,7 @@ namespace libMSMM::mm
 						(!strcmp(Instruction.mnemonic, "jmp") && Instruction.bytes[0] == 0xE9 /* JMP rel32; */)
 						)
 					{
-						RelReloc(SectionDirectory, Instruction, 1, Section);
+						RelReloc(SectionDirectory, Instruction, 1);
 					}
 					else if (Instruction.bytes[0] == 0x0F) // https://c9x.me/x86/html/file_module_x86_id_146.html
 					{
@@ -241,7 +241,7 @@ namespace libMSMM::mm
 							(!strcmp(Instruction.mnemonic, "jnle") && Instruction.bytes[1] == 0x8F)
 							)
 						{
-							RelReloc(SectionDirectory, Instruction, 2, Section);
+							RelReloc(SectionDirectory, Instruction, 2);
 						}
 					}
 				}
@@ -262,18 +262,57 @@ namespace libMSMM::mm
 		return true;
 	}
 
-	bool RunImports(PIMAGE_NT_HEADERS32 ntHeader, sections::SectionDir& SectionDirectory)
+	bool RunImports(PIMAGE_NT_HEADERS32 ntHeader, sections::SectionDir& SectionDirectory, process::Process& Process)
 	{
 		LOG_DEBUG("starting imports");
 		auto vaImportDir = ntHeader->OptionalHeader.DataDirectory[IMAGE_DIRECTORY_ENTRY_IMPORT].VirtualAddress;
-		
 		auto CurrentImportDesc = sections::VAToLocalPtr<PIMAGE_IMPORT_DESCRIPTOR>(SectionDirectory, vaImportDir);
-
+		
 		auto ImportCount = 0;
 
 		while (CurrentImportDesc->FirstThunk)
 		{
+			auto vaModuleName = CurrentImportDesc->Name;
+			auto pModuleName = sections::VAToLocalPtr<char*>(SectionDirectory, vaModuleName);
 
+			LOG_TRACE("\timporting {}", pModuleName);
+
+			auto pModule = Process.GetRemoteModule(pModuleName);
+			if (!pModule)
+			{
+				LOG_ERROR("could not resolve {}!", pModuleName);
+				return false;
+			}
+
+			auto vaFirstThunk = CurrentImportDesc->FirstThunk;
+			auto vaOriginalThunk = CurrentImportDesc->OriginalFirstThunk;
+
+			auto pFirstThunk = sections::VAToLocalPtr<PIMAGE_THUNK_DATA32>(SectionDirectory, vaFirstThunk);
+			auto pOriginalThunk = sections::VAToLocalPtr<PIMAGE_THUNK_DATA32>(SectionDirectory, vaOriginalThunk);
+
+			while (pOriginalThunk->u1.Function)
+			{
+				auto pThunkData = sections::VAToLocalPtr<PIMAGE_IMPORT_BY_NAME>(SectionDirectory, pOriginalThunk->u1.AddressOfData);
+
+				if (pThunkData)
+				{
+					LOG_TRACE("\t\t function {}", pThunkData->Name);
+					auto pFunction = Process.GetRemoteFunction(pModule, pThunkData->Name);
+
+					if (!pFunction)
+					{
+						LOG_ERROR("could not resolve {} in {}!", pThunkData->Name, pModuleName);
+						return false;
+					}
+
+					*sections::VAToLocalPtr<uint32_t*>(SectionDirectory, pFirstThunk->u1.Function) = pFunction;
+				}
+
+				pFirstThunk++;
+				pOriginalThunk++;
+			}
+
+			CurrentImportDesc++;
 		}
 
 		LOG_DEBUG("finished {} imports", ImportCount);
@@ -315,15 +354,15 @@ namespace libMSMM::mm
 			return false;
 		}
 
-		if (!RunImports(ntHeader, SectionDirectory))
+		if (!RunImports(ntHeader, SectionDirectory, Process))
 		{
 			LOG_ERROR("RunImports Failed!");
 			return false;
 		}
 
-		//typedef BOOL(__stdcall * DLLMain_Func)(HINSTANCE, DWORD, LPVOID);
-		//DLLMain_Func EntryPoint = sections::VAToRemotePtr<DLLMain_Func>(SectionDirectory, ntHeader->OptionalHeader.AddressOfEntryPoint);
-		//EntryPoint(0, DLL_PROCESS_ATTACH, 0);
+		typedef BOOL(__stdcall * DLLMain_Func)(HINSTANCE, DWORD, LPVOID);
+		DLLMain_Func EntryPoint = sections::VAToRemotePtr<DLLMain_Func>(SectionDirectory, ntHeader->OptionalHeader.AddressOfEntryPoint);
+		EntryPoint(0, DLL_PROCESS_ATTACH, 0);
 
 		LOG_DEBUG("finished map");
 		return true;

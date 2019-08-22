@@ -73,4 +73,12 @@ namespace libMSMM::process
 	{
 		WriteProcessMemory(m_hOpenedProcess, pDestBuffer, pLocalBuffer, BufferSize, nullptr);
 	}
+	HMODULE Process::GetRemoteModule(const char* pModuleName)
+	{
+		return GetModuleHandle(pModuleName);
+	}
+	uint32_t Process::GetRemoteFunction(HMODULE pModule, const char* pFunctionName)
+	{
+		return (uint32_t)GetProcAddress(pModule, pFunctionName);
+	}
 }

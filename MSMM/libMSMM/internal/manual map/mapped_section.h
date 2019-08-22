@@ -61,35 +61,30 @@ namespace libMSMM::mm::sections
 		auto& Sec = VAToSec(Sections, VA);
 		return Sec.RelocateVAToLocal<T>(VA);
 	}
-
 	template<typename T = void*>
 	T VAToRemotePtr(const SectionDir& Sections, uint32_t VA)
 	{
 		const auto& Sec = VAToSec(Sections, VA);
 		return Sec.RelocateVAToRemote<T>(VA);
 	}
-
 	template<typename T = void*>
 	T LocalToRemotePtr(const SectionDir& Sections, uint32_t Local)
 	{
 		const auto& Sec = LocalToSec(Sections, Local);
 		return (T)(Local - (uint32_t)Sec.GetLocalAllocation() + (uint32_t)Sec.GetRemoteAllocation());
 	}
-
 	template<typename T = void*>
 	T RemoteToLocalPtr(const SectionDir& Sections, uint32_t Local)
 	{
 		const auto& Sec = RemoteToSec(Sections, Local);
 		return (T)(Local - (uint32_t)Sec.GetRemoteAllocation() + (uint32_t)Sec.GetLocalAllocation());
 	}
-
 	template<typename T = void*>
 	T LocalToVAPtr(const SectionDir & Sections, uint32_t Local)
 	{
 		auto& Sec = LocalToSec(Sections, Local);
 		return (T)(Local - (uint32_t)Sec.GetLocalAllocation() + (uint32_t)Sec.Header().VirtualAddress);
 	}
-
 	template<typename T = void*>
 	T RemoteToVAPtr(const SectionDir & Sections, uint32_t Remote)
 	{

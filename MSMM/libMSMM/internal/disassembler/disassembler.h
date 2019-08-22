@@ -2,6 +2,7 @@
 
 namespace libMSMM::disassembler
 {
-	typedef std::vector<cs_insn> instructions;
+	typedef cs_insn instruction;
+	typedef std::vector<instruction> instructions;
 	bool disassemble(void* pCode, size_t CodeSize, instructions& output);
 }
