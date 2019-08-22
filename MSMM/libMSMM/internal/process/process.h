@@ -14,6 +14,8 @@ namespace libMSMM::process
 
 		void* AllocateMemory(size_t Size, DWORD protection);
 		void FreeMemory(void* pMemory);
+
+		void WriteMemory(void* pLocalBuffer, void* pDestBuffer, size_t BufferSize);
 	private:
 
 		int m_ProcessId;

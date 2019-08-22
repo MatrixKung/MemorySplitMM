@@ -73,12 +73,12 @@ namespace libMSMM::mm::sections
 		return m_pLocalAllocation && m_pRemoteAllocation;
 	}
 
-	void* MappedSection::GetLocalAllocation()
+	void* MappedSection::GetLocalAllocation() const
 	{
 		return m_pLocalAllocation;
 	}
 
-	void* MappedSection::GetRemoteAllocation()
+	void* MappedSection::GetRemoteAllocation() const 
 	{
 		return m_pRemoteAllocation;
 	}
@@ -88,18 +88,63 @@ namespace libMSMM::mm::sections
 		return m_Header;
 	}
 
+	void MappedSection::WriteSectionToRemote()
+	{
+		m_hProcess.WriteMemory( m_pLocalAllocation, m_pRemoteAllocation, m_Header.SizeOfRawData );
+	}
+
 	void MappedSection::lock_remote()
 	{
 		m_isRemoteLocked = true;
 	}
 
-	const MappedSection& VAToSec(const SectionDir& Sections, DWORD VA)
+	bool MappedSection::does_contain_va(DWORD VA) const
+	{
+		auto SectionVA = m_Header.VirtualAddress;
+		auto SectionSize = m_Header.SizeOfRawData;
+		if (SectionVA <= VA && SectionVA + SectionSize > VA)
+		{
+			return true;
+		}
+
+		return false;
+	}
+
+	const MappedSection& VAToSec(const SectionDir& Sections, uint32_t VA)
 	{
 		for (auto& Section : Sections)
 		{
 			auto SectionVA = Section.Header().VirtualAddress;
 			auto SectionSize = Section.Header().SizeOfRawData;
 			if (SectionVA <= VA && SectionVA + SectionSize > VA)
+			{
+				return Section;
+			}
+		}
+
+		return Sections.back(); // if we fail - return the last section (we assume this is the backup section)
+	}
+	const MappedSection& LocalToSec(const SectionDir& Sections, uint32_t Local)
+	{
+		for (auto& Section : Sections)
+		{
+			auto SectionLocation = (DWORD)Section.GetLocalAllocation();
+			auto SectionSize = Section.Header().SizeOfRawData;
+			if (SectionLocation <= Local && SectionLocation + SectionSize > Local)
+			{
+				return Section;
+			}
+		}
+
+		return Sections.back(); // if we fail - return the last section (we assume this is the backup section)
+	}
+	const MappedSection& RemoteToSec(const SectionDir& Sections, uint32_t Remote)
+	{
+		for (auto& Section : Sections)
+		{
+			auto SectionLocation = (DWORD)Section.GetRemoteAllocation();
+			auto SectionSize = Section.Header().SizeOfRawData;
+			if (SectionLocation <= Remote && SectionLocation + SectionSize > Remote)
 			{
 				return Section;
 			}

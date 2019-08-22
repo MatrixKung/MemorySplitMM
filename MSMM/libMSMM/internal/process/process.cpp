@@ -67,5 +67,10 @@ namespace libMSMM::process
 	}
 	void Process::FreeMemory(void* pMemory)
 	{
+		VirtualFree(pMemory, NULL, MEM_RELEASE);
+	}
+	void Process::WriteMemory(void* pLocalBuffer, void* pDestBuffer, size_t BufferSize)
+	{
+		WriteProcessMemory(m_hOpenedProcess, pDestBuffer, pLocalBuffer, BufferSize, nullptr);
 	}
 }
