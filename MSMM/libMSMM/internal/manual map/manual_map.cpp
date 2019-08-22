@@ -32,7 +32,7 @@ namespace libMSMM::mm
 
 		return true;
 	}
-
+	
 	bool AllocateSections(sections::SectionDir& SectionDirectory, PIMAGE_NT_HEADERS32 ntHeader, process::Process& Process)
 	{
 		const auto nSectionCount = ntHeader->FileHeader.NumberOfSections;
@@ -162,7 +162,7 @@ namespace libMSMM::mm
 		LOG_DEBUG("finsihed {} standard relocations", DebugRelocationCounter);
 		return true;
 	}
-
+	
 	void RelReloc(sections::SectionDir& SectionDirectory, cs_insn& Instruction, uint32_t offset, sections::MappedSection& CurrentSection)
 	{
 		const uint32_t pAddress = Instruction.address;
@@ -262,6 +262,24 @@ namespace libMSMM::mm
 		return true;
 	}
 
+	bool RunImports(PIMAGE_NT_HEADERS32 ntHeader, sections::SectionDir& SectionDirectory)
+	{
+		LOG_DEBUG("starting imports");
+		auto vaImportDir = ntHeader->OptionalHeader.DataDirectory[IMAGE_DIRECTORY_ENTRY_IMPORT].VirtualAddress;
+		
+		auto CurrentImportDesc = sections::VAToLocalPtr<PIMAGE_IMPORT_DESCRIPTOR>(SectionDirectory, vaImportDir);
+
+		auto ImportCount = 0;
+
+		while (CurrentImportDesc->FirstThunk)
+		{
+
+		}
+
+		LOG_DEBUG("finished {} imports", ImportCount);
+		return true;
+	}
+
 	bool MapImage(void* pImage, const size_t ImageSize, process::Process& Process)
 	{
 		LOG_DEBUG("starting map");
@@ -297,7 +315,16 @@ namespace libMSMM::mm
 			return false;
 		}
 
-		
+		if (!RunImports(ntHeader, SectionDirectory))
+		{
+			LOG_ERROR("RunImports Failed!");
+			return false;
+		}
+
+		//typedef BOOL(__stdcall * DLLMain_Func)(HINSTANCE, DWORD, LPVOID);
+		//DLLMain_Func EntryPoint = sections::VAToRemotePtr<DLLMain_Func>(SectionDirectory, ntHeader->OptionalHeader.AddressOfEntryPoint);
+		//EntryPoint(0, DLL_PROCESS_ATTACH, 0);
+
 		LOG_DEBUG("finished map");
 		return true;
 	}
