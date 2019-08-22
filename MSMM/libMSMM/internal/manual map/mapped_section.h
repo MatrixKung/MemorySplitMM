@@ -44,6 +44,7 @@ namespace libMSMM::mm::sections
 		mutable bool m_isLocalLocked;
 		mutable bool m_isRemoteLocked;
 
+		size_t m_AllocationSize;
 		void* m_pRemoteAllocation;
 		void* m_pLocalAllocation;
 	};

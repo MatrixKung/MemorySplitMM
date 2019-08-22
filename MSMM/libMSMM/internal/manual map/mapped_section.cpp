@@ -8,21 +8,21 @@ namespace libMSMM::mm::sections
 		m_isRemoteLocked(false),
 		m_isLocalLocked(false),
 		m_pLocalAllocation(0),
-		m_pRemoteAllocation(0)
+		m_pRemoteAllocation(0),
+		m_AllocationSize(Header.SizeOfRawData)
 	{
-		const auto AllocSize = m_Header.SizeOfRawData;
-
-		if (AllocSize > 0) // dont bother allocating nothing
+		if (m_AllocationSize > 0) // dont bother allocating nothing
 		{
 			DWORD MemoryProtection = PAGE_READWRITE;
 
 			if (m_Header.Characteristics & IMAGE_SCN_MEM_EXECUTE)
 			{
 				MemoryProtection = PAGE_EXECUTE_READWRITE;
+			//	m_AllocationSize += 5;
 			}
 
-			m_pLocalAllocation = VirtualAlloc(nullptr, AllocSize, MEM_COMMIT | MEM_RESERVE, MemoryProtection);
-			m_pRemoteAllocation = Process.AllocateMemory(AllocSize, MemoryProtection);
+			m_pLocalAllocation = VirtualAlloc(nullptr, m_AllocationSize, MEM_COMMIT | MEM_RESERVE, MemoryProtection);
+			m_pRemoteAllocation = Process.AllocateMemory(m_AllocationSize, MemoryProtection);
 		}
 
 		LOG_INFO("Allocated {}\t size=0x{:08x} virtual=0x{:08x} local=0x{:08x} remote={:08x}",
@@ -57,7 +57,8 @@ namespace libMSMM::mm::sections
 		m_isRemoteLocked(false),
 		m_isLocalLocked(false),
 		m_pLocalAllocation(Copy.m_pLocalAllocation),
-		m_pRemoteAllocation(Copy.m_pRemoteAllocation)
+		m_pRemoteAllocation(Copy.m_pRemoteAllocation),
+		m_AllocationSize(Copy.m_AllocationSize)
 	{
 		Copy.m_isLocalLocked = true;
 		Copy.m_isRemoteLocked = true;
@@ -90,7 +91,7 @@ namespace libMSMM::mm::sections
 
 	void MappedSection::WriteSectionToRemote()
 	{
-		m_hProcess.WriteMemory( m_pLocalAllocation, m_pRemoteAllocation, m_Header.SizeOfRawData );
+		m_hProcess.WriteMemory( m_pLocalAllocation, m_pRemoteAllocation, m_AllocationSize );
 	}
 
 	void MappedSection::lock_remote()
