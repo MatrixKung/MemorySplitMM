@@ -22,7 +22,8 @@ int main(int argc, char** argv)
 		return 0;
 	}
 
-	const auto LoadedBinary = std::vector<char>(
+	std::vector<char> LoadedBinary;
+	LoadedBinary.assign(
 		std::istreambuf_iterator<char>(BinaryFile),
 		std::istreambuf_iterator<char>()
 	);

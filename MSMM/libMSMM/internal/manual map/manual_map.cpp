@@ -33,7 +33,7 @@ namespace libMSMM::mm
 		return true;
 	}
 
-	bool AllocateSections(sections::SectionDir& SectionDirectory, PIMAGE_NT_HEADERS32 ntHeader, process::Process& Process )
+	bool AllocateSections(sections::SectionDir& SectionDirectory, PIMAGE_NT_HEADERS32 ntHeader, process::Process& Process)
 	{
 		const auto nSectionCount = ntHeader->FileHeader.NumberOfSections;
 		const PIMAGE_SECTION_HEADER pSections = IMAGE_FIRST_SECTION(ntHeader);
@@ -101,7 +101,7 @@ namespace libMSMM::mm
 
 		const auto nRelocSize = dataDir.Size;
 		const auto vaFirstReloc = dataDir.VirtualAddress;
-		const auto pFirstReloc = sections::VAToLocalPtr<PIMAGE_BASE_RELOCATION>( SectionDirectory, vaFirstReloc );
+		const auto pFirstReloc = sections::VAToLocalPtr<PIMAGE_BASE_RELOCATION>(SectionDirectory, vaFirstReloc);
 
 		auto DebugRelocationCounter = 0;
 		for (
@@ -135,7 +135,7 @@ namespace libMSMM::mm
 						return false;
 					}
 
-					auto vaRelocationTarget = *pRelocation;
+					auto vaRelocationTarget = *pRelocation - ntHeader->OptionalHeader.ImageBase;
 					auto pRelocationTarget = sections::VAToRemotePtr<uint32_t>(SectionDirectory, vaRelocationTarget);
 
 					if (!pRelocation)
@@ -163,6 +163,105 @@ namespace libMSMM::mm
 		return true;
 	}
 
+	void RelReloc(sections::SectionDir& SectionDirectory, cs_insn& Instruction, uint32_t offset, sections::MappedSection& CurrentSection)
+	{
+		const uint32_t pAddress = Instruction.address;
+		const uint32_t pNextInstruction = pAddress + Instruction.size;
+		const uint32_t vaNextInstruction = sections::LocalToVAPtr<uint32_t>(SectionDirectory, pNextInstruction);
+
+		const uint32_t relTarget = *(uint32_t*)(pAddress + offset);
+		const uint32_t vaTarget = vaNextInstruction + relTarget;
+
+		const uint32_t pRelocatedTarget = sections::VAToRemotePtr<uint32_t>(SectionDirectory, vaTarget);
+		const uint32_t relRelocated = pRelocatedTarget - sections::VAToRemotePtr<uint32_t>(SectionDirectory, vaNextInstruction);
+
+		if (relRelocated != relTarget)
+		{
+			LOG_TRACE("\tREL32 RELOC: {} {} \t va=0x{:08x} original=0x{:08x} new=0x{:08x}", Instruction.mnemonic, Instruction.op_str, vaNextInstruction - Instruction.size, relTarget, relRelocated);
+			*(uint32_t*)(pAddress + offset) = relRelocated;
+		}
+	}
+
+	bool RunRelRelocation(sections::SectionDir& SectionDirectory)
+	{
+		LOG_DEBUG("running inter-section relative relocations");
+		for (auto& Section : SectionDirectory)
+		{
+			if (Section.Header().Characteristics & IMAGE_SCN_MEM_EXECUTE)
+			{
+				disassembler::instructions Instrucitons;
+				if (!disassembler::disassemble(Section.GetLocalAllocation(), Section.Header().SizeOfRawData, Instrucitons))
+				{
+					LOG_ERROR("disassembler failed!");
+					return false;
+				}
+
+				for (auto& Instruction : Instrucitons)
+				{
+					if (
+						(!strcmp(Instruction.mnemonic, "call") && Instruction.bytes[0] == 0xE8 /* CALL rel32; */) ||
+						(!strcmp(Instruction.mnemonic, "jmp") && Instruction.bytes[0] == 0xE9 /* JMP rel32; */)
+						)
+					{
+						RelReloc(SectionDirectory, Instruction, 1, Section);
+					}
+					else if (Instruction.bytes[0] == 0x0F) // https://c9x.me/x86/html/file_module_x86_id_146.html
+					{
+						// todo: not this ugly shit
+						if (
+							(!strcmp(Instruction.mnemonic, "jo") && Instruction.bytes[1] == 0x80) ||
+							(!strcmp(Instruction.mnemonic, "jno") && Instruction.bytes[1] == 0x81) ||
+							(!strcmp(Instruction.mnemonic, "jb") && Instruction.bytes[1] == 0x82) ||
+							(!strcmp(Instruction.mnemonic, "jc") && Instruction.bytes[1] == 0x82) ||
+							(!strcmp(Instruction.mnemonic, "jnae") && Instruction.bytes[1] == 0x82) ||
+							(!strcmp(Instruction.mnemonic, "jae") && Instruction.bytes[1] == 0x83) ||
+							(!strcmp(Instruction.mnemonic, "jnb") && Instruction.bytes[1] == 0x83) ||
+							(!strcmp(Instruction.mnemonic, "jnc") && Instruction.bytes[1] == 0x83) ||
+							(!strcmp(Instruction.mnemonic, "je") && Instruction.bytes[1] == 0x84) ||
+							(!strcmp(Instruction.mnemonic, "jz") && Instruction.bytes[1] == 0x84) ||
+							(!strcmp(Instruction.mnemonic, "jne") && Instruction.bytes[1] == 0x85) ||
+							(!strcmp(Instruction.mnemonic, "jnz") && Instruction.bytes[1] == 0x85) ||
+							(!strcmp(Instruction.mnemonic, "jbe") && Instruction.bytes[1] == 0x86) ||
+							(!strcmp(Instruction.mnemonic, "jna") && Instruction.bytes[1] == 0x86) ||
+							(!strcmp(Instruction.mnemonic, "ja") && Instruction.bytes[1] == 0x87) ||
+							(!strcmp(Instruction.mnemonic, "jnbe") && Instruction.bytes[1] == 0x87) ||
+							(!strcmp(Instruction.mnemonic, "js") && Instruction.bytes[1] == 0x88) ||
+							(!strcmp(Instruction.mnemonic, "jns") && Instruction.bytes[1] == 0x89) ||
+							(!strcmp(Instruction.mnemonic, "jp") && Instruction.bytes[1] == 0x8A) ||
+							(!strcmp(Instruction.mnemonic, "jpe") && Instruction.bytes[1] == 0x8A) ||
+							(!strcmp(Instruction.mnemonic, "jpp") && Instruction.bytes[1] == 0x8B) ||
+							(!strcmp(Instruction.mnemonic, "jnp") && Instruction.bytes[1] == 0x8B) ||
+							(!strcmp(Instruction.mnemonic, "jl") && Instruction.bytes[1] == 0x8C) ||
+							(!strcmp(Instruction.mnemonic, "jnge") && Instruction.bytes[1] == 0x8C) ||
+							(!strcmp(Instruction.mnemonic, "jge") && Instruction.bytes[1] == 0x8D) ||
+							(!strcmp(Instruction.mnemonic, "jnl") && Instruction.bytes[1] == 0x8D) ||
+							(!strcmp(Instruction.mnemonic, "jng") && Instruction.bytes[1] == 0x8E) ||
+							(!strcmp(Instruction.mnemonic, "jle") && Instruction.bytes[1] == 0x8E) ||
+							(!strcmp(Instruction.mnemonic, "jg") && Instruction.bytes[1] == 0x8F) ||
+							(!strcmp(Instruction.mnemonic, "jnle") && Instruction.bytes[1] == 0x8F)
+							)
+						{
+							RelReloc(SectionDirectory, Instruction, 2, Section);
+						}
+					}
+				}
+			}
+		}
+		LOG_DEBUG("finshed relative relocations");
+
+		return true;
+	}
+
+	bool WriteSections(sections::SectionDir& SectionDirectory)
+	{
+		for (auto& Section : SectionDirectory)
+		{
+			Section.WriteSectionToRemote();
+		}
+
+		return true;
+	}
+
 	bool MapImage(void* pImage, const size_t ImageSize, process::Process& Process)
 	{
 		LOG_DEBUG("starting map");
@@ -185,14 +284,20 @@ namespace libMSMM::mm
 		}
 
 		CopySections(SectionDirectory, pImage);
-		
+
 		if (!RunBasicRelocations(SectionDirectory, ntHeader))
 		{
 			LOG_ERROR("RunBasicRelocations Failed!");
 			return false;
 		}
 
+		if (!RunRelRelocation(SectionDirectory))
+		{
+			LOG_ERROR("RunBasicRelocations Failed!");
+			return false;
+		}
 
+		
 		LOG_DEBUG("finished map");
 		return true;
 	}
