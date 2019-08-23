@@ -18,7 +18,6 @@ namespace libMSMM::mm::sections
 			if (m_Header.Characteristics & IMAGE_SCN_MEM_EXECUTE)
 			{
 				MemoryProtection = PAGE_EXECUTE_READWRITE;
-			//	m_AllocationSize += 5;
 			}
 
 			m_pLocalAllocation = VirtualAlloc(nullptr, m_AllocationSize, MEM_COMMIT | MEM_RESERVE, MemoryProtection);

@@ -177,8 +177,8 @@ namespace libMSMM::mm
 
 		if (relRelocated != relTarget)
 		{
-			LOG_TRACE("\tREL32 RELOC: {} {} \t va=0x{:08x} original=0x{:08x} new=0x{:08x}", Instruction.mnemonic, Instruction.op_str, vaNextInstruction - Instruction.size, relTarget, relRelocated);
-			*(uint32_t*)(pAddress + offset) = relRelocated;
+			LOG_TRACE("\tREL32 RELOC: {} {} \t va=0x{:08x} org=0x{:08x} new=0x{:08x}", Instruction.mnemonic, Instruction.op_str, vaNextInstruction - Instruction.size, vaTarget, pRelocatedTarget);
+ 			*(uint32_t*)(pAddress + offset) = relRelocated;
 		}
 	}
 
@@ -275,9 +275,9 @@ namespace libMSMM::mm
 			auto vaModuleName = CurrentImportDesc->Name;
 			auto pModuleName = sections::VAToLocalPtr<char*>(SectionDirectory, vaModuleName);
 
-			LOG_TRACE("\timporting {}", pModuleName);
 
 			auto pModule = Process.GetRemoteModule(pModuleName);
+			LOG_TRACE("\timporting {}: 0x{:08x}", pModuleName, (uint32_t)pModule);
 			if (!pModule)
 			{
 				LOG_ERROR("could not resolve {}!", pModuleName);
@@ -296,8 +296,8 @@ namespace libMSMM::mm
 
 				if (pThunkData)
 				{
-					LOG_TRACE("\t\t function {}", pThunkData->Name);
 					auto pFunction = Process.GetRemoteFunction(pModule, pThunkData->Name);
+					LOG_TRACE("\t\t function {}: 0x{:08x}", pThunkData->Name, pFunction);
 
 					if (!pFunction)
 					{
@@ -305,7 +305,7 @@ namespace libMSMM::mm
 						return false;
 					}
 
-					*sections::VAToLocalPtr<uint32_t*>(SectionDirectory, pFirstThunk->u1.Function) = pFunction;
+					*(uint32_t*)pFirstThunk = pFunction;
 				}
 
 				pFirstThunk++;
@@ -360,8 +360,14 @@ namespace libMSMM::mm
 			return false;
 		}
 
+		for (auto& Section : SectionDirectory)
+		{
+			Section.WriteSectionToRemote();
+		}
+
 		typedef BOOL(__stdcall * DLLMain_Func)(HINSTANCE, DWORD, LPVOID);
 		DLLMain_Func EntryPoint = sections::VAToRemotePtr<DLLMain_Func>(SectionDirectory, ntHeader->OptionalHeader.AddressOfEntryPoint);
+		
 		EntryPoint(0, DLL_PROCESS_ATTACH, 0);
 
 		LOG_DEBUG("finished map");

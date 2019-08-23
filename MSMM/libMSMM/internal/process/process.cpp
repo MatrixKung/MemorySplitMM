@@ -1,5 +1,6 @@
 #include <pch.h>
 #include <tlhelp32.h>
+#include <Psapi.h>
 
 namespace libMSMM::process
 {
@@ -75,7 +76,54 @@ namespace libMSMM::process
 	}
 	HMODULE Process::GetRemoteModule(const char* pModuleName)
 	{
-		return GetModuleHandle(pModuleName);
+		//BOOL EnumProcessModules(
+		//	HANDLE  hProcess,
+		//	HMODULE * lphModule,
+		//	DWORD   cb,
+		//	LPDWORD lpcbNeeded
+		//);
+		constexpr auto ModuleListSize = 1000;
+		HMODULE ModuleList[ModuleListSize] = { 0 };
+		constexpr auto CB = ModuleListSize * sizeof(HMODULE);
+
+		std::string DesiredModule = pModuleName;
+		std::transform(DesiredModule.begin(), DesiredModule.end(), DesiredModule.begin(), tolower);
+
+
+		DWORD cbNeeded = 0;
+		if (K32EnumProcessModules(m_hOpenedProcess, ModuleList, CB, &cbNeeded))
+		{
+			for (auto i = 0; i < cbNeeded / sizeof(HMODULE); i++)
+			{
+				auto Module = ModuleList[i];
+
+				if (Module)
+				{
+					char ModuleFileName[128] = { 0 };
+					if (K32GetModuleFileNameExA(m_hOpenedProcess, Module, ModuleFileName, 128))
+					{
+						std::string ModuleFileNameNoPath = ModuleFileName;
+						ModuleFileNameNoPath = ModuleFileNameNoPath.substr(ModuleFileNameNoPath.find_last_of('\\') + 1);
+
+						std::transform(ModuleFileNameNoPath.begin(), ModuleFileNameNoPath.end(), ModuleFileNameNoPath.begin(), tolower);
+
+						if (strcmp(DesiredModule.c_str(), ModuleFileNameNoPath.c_str()) == 0)
+						{
+							return Module;
+						}
+					}
+					else
+					{
+						LOG_ERROR("K32GetModuleFileNameExA failed - maybe can continue?");
+					}
+				}
+			}
+		}
+		else
+		{
+			LOG_ERROR("K32EnumProcessModules failed!");
+			return nullptr;
+		}
 	}
 	uint32_t Process::GetRemoteFunction(HMODULE pModule, const char* pFunctionName)
 	{
