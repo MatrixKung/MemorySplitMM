@@ -363,12 +363,15 @@ namespace libMSMM::mm
 		for (auto& Section : SectionDirectory)
 		{
 			Section.WriteSectionToRemote();
+			Section.lock_remote();
 		}
 
-		typedef BOOL(__stdcall * DLLMain_Func)(HINSTANCE, DWORD, LPVOID);
-		DLLMain_Func EntryPoint = sections::VAToRemotePtr<DLLMain_Func>(SectionDirectory, ntHeader->OptionalHeader.AddressOfEntryPoint);
-		
+		LOG_TRACE("CALLING ENTRY POINT");
+		auto EntryPoint = sections::VAToRemotePtr<BOOL(__stdcall*)(HINSTANCE, DWORD, LPVOID)>(SectionDirectory, ntHeader->OptionalHeader.AddressOfEntryPoint);
 		EntryPoint(0, DLL_PROCESS_ATTACH, 0);
+
+		LOG_TRACE("finished entry point thread");
+
 
 		LOG_DEBUG("finished map");
 		return true;
