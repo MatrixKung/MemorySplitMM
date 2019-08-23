@@ -19,6 +19,7 @@ namespace libMSMM::process
 
 		HMODULE GetRemoteModule(const char* pModuleName);
 		uint32_t GetRemoteFunction(HMODULE, const char* pFunctionName);
+		HANDLE GetHandle() const;
 	private:
 
 		int m_ProcessId;

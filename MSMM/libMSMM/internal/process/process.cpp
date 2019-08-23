@@ -125,8 +125,130 @@ namespace libMSMM::process
 			return nullptr;
 		}
 	}
+
 	uint32_t Process::GetRemoteFunction(HMODULE pModule, const char* pFunctionName)
 	{
-		return (uint32_t)GetProcAddress(pModule, pFunctionName);
+		// read DOS header
+		IMAGE_DOS_HEADER DosHeader;
+		if (!ReadProcessMemory(m_hOpenedProcess, pModule, &DosHeader, sizeof(IMAGE_DOS_HEADER), nullptr))
+		{
+			LOG_ERROR("ReadProcessMemory failed!");
+			return 0;
+		}
+
+		// read nt header
+		IMAGE_NT_HEADERS32 NTHeader;
+		if (!ReadProcessMemory(m_hOpenedProcess, (char*)pModule + DosHeader.e_lfanew, &NTHeader, sizeof(IMAGE_NT_HEADERS32), nullptr))
+		{
+			LOG_ERROR("ReadProcessMemory failed!");
+			return 0;
+		}
+
+		// get export dir
+		IMAGE_DATA_DIRECTORY ExportDataDir = NTHeader.OptionalHeader.DataDirectory[IMAGE_DIRECTORY_ENTRY_EXPORT];
+		
+		if (ExportDataDir.VirtualAddress == 0)
+		{
+			LOG_ERROR("image does not have a export data directory!");
+			return 0;
+		}
+
+		IMAGE_EXPORT_DIRECTORY ExportDirectory;
+
+		if (!ReadProcessMemory(m_hOpenedProcess, (char*)pModule + ExportDataDir.VirtualAddress, &ExportDirectory, sizeof(IMAGE_EXPORT_DIRECTORY), nullptr))
+		{
+			LOG_ERROR("ReadProcessMemory failed!");
+			return 0;
+		}
+
+		const auto NumberOfFunctions = ExportDirectory.NumberOfFunctions;
+		const auto NumberOfNames = ExportDirectory.NumberOfNames;
+
+		uint32_t* pNames = (uint32_t*)malloc(NumberOfNames * sizeof(uint32_t));
+		if (!pNames)
+		{
+			LOG_ERROR("failed to allocate name directory!");
+			return 0;
+		}
+
+		uint16_t* pNameOrdinals = (uint16_t*)malloc(NumberOfNames * sizeof(uint16_t));
+		if (!pNameOrdinals)
+		{
+			LOG_ERROR("failed to allocate name directory!");
+			return 0;
+		}
+
+		uint32_t* pFunctions = (uint32_t*)malloc(NumberOfFunctions * sizeof(uint32_t));
+		if (!pFunctions)
+		{
+			LOG_ERROR("failed to allocate function directory!");
+			return 0;
+		}
+
+		if (!ReadProcessMemory(m_hOpenedProcess, (char*)pModule + ExportDirectory.AddressOfNames, pNames, NumberOfNames * sizeof(uint32_t), nullptr))
+		{
+			LOG_ERROR("ReadProcessMemory failed!");
+			return 0;
+		}
+
+		if (!ReadProcessMemory(m_hOpenedProcess, (char*)pModule + ExportDirectory.AddressOfNameOrdinals, pNameOrdinals, NumberOfNames * sizeof(uint16_t), nullptr))
+		{
+			LOG_ERROR("ReadProcessMemory failed!");
+			return 0;
+		}
+
+		if (!ReadProcessMemory(m_hOpenedProcess, (char*)pModule + ExportDirectory.AddressOfFunctions, pFunctions, NumberOfFunctions * sizeof(uint32_t), nullptr))
+		{
+			LOG_ERROR("ReadProcessMemory failed!");
+			return 0;
+		}
+
+		for (auto i = 0; i < NumberOfNames; i++)
+		{
+			char FunctionName[4096] = { 0 };
+			
+			if (!ReadProcessMemory(m_hOpenedProcess, (char*)pModule + pNames[i], FunctionName, 4096, nullptr))
+			{
+				LOG_ERROR("ReadProcessMemory failed!");
+				return 0;
+			}
+
+			if (!strcmp(FunctionName, pFunctionName))
+			{
+				auto NameOrdinal = pNameOrdinals[i];
+				auto OptFn = (uint32_t)pModule + pFunctions[NameOrdinal];
+				if (OptFn != (uint32_t)GetProcAddress(pModule, pFunctionName))
+				{
+					// forwarded export
+					if (!ReadProcessMemory(m_hOpenedProcess, (void*)OptFn, FunctionName, 4096, nullptr))
+					{
+						LOG_ERROR("ReadProcessMemory failed!");
+						return 0;
+					}
+
+					// FunctionName in format DLL.Function
+					std::string FuncName = FunctionName;
+					std::string DLLName = FuncName.substr(0, FuncName.find('.')) + ".dll";
+					FuncName = FuncName.substr(FuncName.find('.') + 1);
+
+					auto FowardModule = GetRemoteModule(DLLName.c_str());
+					if (!FowardModule)
+					{
+						LOG_ERROR("could not foward function");
+					}
+
+					return GetRemoteFunction(FowardModule, FuncName.c_str());
+				}
+				return OptFn;
+			}
+		}
+
+		LOG_ERROR("failed to find function!");
+
+		return 0;
+	}
+	HANDLE Process::GetHandle() const
+	{
+		return m_hOpenedProcess;
 	}
 }
