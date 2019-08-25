@@ -132,7 +132,7 @@ namespace libMSMM::process
 		IMAGE_DOS_HEADER DosHeader;
 		if (!ReadProcessMemory(m_hOpenedProcess, pModule, &DosHeader, sizeof(IMAGE_DOS_HEADER), nullptr))
 		{
-			LOG_ERROR("ReadProcessMemory failed!");
+			LOG_ERROR("Read DOS Header failed!");
 			return 0;
 		}
 
@@ -140,7 +140,7 @@ namespace libMSMM::process
 		IMAGE_NT_HEADERS32 NTHeader;
 		if (!ReadProcessMemory(m_hOpenedProcess, (char*)pModule + DosHeader.e_lfanew, &NTHeader, sizeof(IMAGE_NT_HEADERS32), nullptr))
 		{
-			LOG_ERROR("ReadProcessMemory failed!");
+			LOG_ERROR("Read NT Header failed!");
 			return 0;
 		}
 
@@ -157,7 +157,7 @@ namespace libMSMM::process
 
 		if (!ReadProcessMemory(m_hOpenedProcess, (char*)pModule + ExportDataDir.VirtualAddress, &ExportDirectory, sizeof(IMAGE_EXPORT_DIRECTORY), nullptr))
 		{
-			LOG_ERROR("ReadProcessMemory failed!");
+			LOG_ERROR("Read Export Directory failed!");
 			return 0;
 		}
 
@@ -187,19 +187,19 @@ namespace libMSMM::process
 
 		if (!ReadProcessMemory(m_hOpenedProcess, (char*)pModule + ExportDirectory.AddressOfNames, pNames, NumberOfNames * sizeof(uint32_t), nullptr))
 		{
-			LOG_ERROR("ReadProcessMemory failed!");
+			LOG_ERROR("Read Name Directory failed!");
 			return 0;
 		}
 
 		if (!ReadProcessMemory(m_hOpenedProcess, (char*)pModule + ExportDirectory.AddressOfNameOrdinals, pNameOrdinals, NumberOfNames * sizeof(uint16_t), nullptr))
 		{
-			LOG_ERROR("ReadProcessMemory failed!");
+			LOG_ERROR("Read Ordinal Directory failed!");
 			return 0;
 		}
 
 		if (!ReadProcessMemory(m_hOpenedProcess, (char*)pModule + ExportDirectory.AddressOfFunctions, pFunctions, NumberOfFunctions * sizeof(uint32_t), nullptr))
 		{
-			LOG_ERROR("ReadProcessMemory failed!");
+			LOG_ERROR("Read Function Directory failed!");
 			return 0;
 		}
 
@@ -209,7 +209,7 @@ namespace libMSMM::process
 			
 			if (!ReadProcessMemory(m_hOpenedProcess, (char*)pModule + pNames[i], FunctionName, 4096, nullptr))
 			{
-				LOG_ERROR("ReadProcessMemory failed!");
+				LOG_ERROR("Read Function Name failed!");
 				return 0;
 			}
 
@@ -217,12 +217,12 @@ namespace libMSMM::process
 			{
 				auto NameOrdinal = pNameOrdinals[i];
 				auto OptFn = (uint32_t)pModule + pFunctions[NameOrdinal];
-				if (OptFn != (uint32_t)GetProcAddress(pModule, pFunctionName))
+				if (OptFn != (uint32_t)GetProcAddress(pModule, pFunctionName)) // todo - replace!!
 				{
 					// forwarded export
 					if (!ReadProcessMemory(m_hOpenedProcess, (void*)OptFn, FunctionName, 4096, nullptr))
 					{
-						LOG_ERROR("ReadProcessMemory failed!");
+						LOG_ERROR("Read forwarded export failed!");
 						return 0;
 					}
 

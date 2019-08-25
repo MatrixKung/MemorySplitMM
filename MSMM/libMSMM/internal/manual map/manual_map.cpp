@@ -275,9 +275,8 @@ namespace libMSMM::mm
 			auto vaModuleName = CurrentImportDesc->Name;
 			auto pModuleName = sections::VAToLocalPtr<char*>(SectionDirectory, vaModuleName);
 
-
 			auto pModule = Process.GetRemoteModule(pModuleName);
-			LOG_TRACE("\timporting {}: 0x{:08x}", pModuleName, (uint32_t)pModule);
+			LOG_TRACE("\timporting functions from {}: 0x{:08x}", pModuleName, (uint32_t)pModule);
 			if (!pModule)
 			{
 				LOG_ERROR("could not resolve {}!", pModuleName);
@@ -297,7 +296,7 @@ namespace libMSMM::mm
 				if (pThunkData)
 				{
 					auto pFunction = Process.GetRemoteFunction(pModule, pThunkData->Name);
-					LOG_TRACE("\t\t function {}: 0x{:08x}", pThunkData->Name, pFunction);
+					//LOG_TRACE("\t\t function {}: 0x{:08x}", pThunkData->Name, pFunction);
 
 					if (!pFunction)
 					{
@@ -305,6 +304,7 @@ namespace libMSMM::mm
 						return false;
 					}
 
+					ImportCount++;
 					*(uint32_t*)pFirstThunk = pFunction;
 				}
 
@@ -366,12 +366,33 @@ namespace libMSMM::mm
 			Section.lock_remote();
 		}
 
-		LOG_TRACE("CALLING ENTRY POINT");
-		auto EntryPoint = sections::VAToRemotePtr<BOOL(__stdcall*)(HINSTANCE, DWORD, LPVOID)>(SectionDirectory, ntHeader->OptionalHeader.AddressOfEntryPoint);
-		EntryPoint(0, DLL_PROCESS_ATTACH, 0);
+		LOG_DEBUG("creating entry point shellcode");
+		// create bytecode to call dllentrypoint
+		auto Memory = Process.AllocateMemory(29, PAGE_EXECUTE_READWRITE);
 
-		LOG_TRACE("finished entry point thread");
+		auto pEntryPoint = sections::VAToRemotePtr(SectionDirectory, ntHeader->OptionalHeader.AddressOfEntryPoint);
+		auto ppEntryPoint = (char*)&pEntryPoint;
+		
+		// Bytecode to call DLLEntryPoint
+		unsigned char Bytecode[] = {
+			
+			0x55,																		// push ebp
+			0x8B, 0xEC,																	// mov ebp, esp
+			0x68, 0x0, 0x0, 0x0, 0x0,													// push hinstdll (0)
+			0x68, 0x1, 0x0, 0x0, 0x0,													// push fdwReason (DLL_PROCESS_ATTACH)
+			0x68, 0x0, 0x0, 0x0, 0x0,													// push lpReserved (0)
+			0xB8, ppEntryPoint[0], ppEntryPoint[1], ppEntryPoint[2], ppEntryPoint[3],	// mov eax, pEntryPoint
+			0xFF, 0xD0,																	// call eax
+			0x8B, 0xE5,																	// mov esp, ebp
+			0x5D,																		// pop ebp
+			0xC3																		// ret
+		};
+		
+		LOG_DEBUG("writing shellcode to remote");
+		Process.WriteMemory(Bytecode, Memory, 29);
 
+		LOG_DEBUG("creating thread at shellcode");
+		CreateRemoteThread(Process.GetHandle(), NULL, NULL, (LPTHREAD_START_ROUTINE)Memory, NULL, NULL, NULL);
 
 		LOG_DEBUG("finished map");
 		return true;

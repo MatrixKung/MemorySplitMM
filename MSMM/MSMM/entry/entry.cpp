@@ -1,4 +1,5 @@
 #include <pch.h>
+#include <Windows.h>
 
 int main(int argc, char** argv)
 {
@@ -44,5 +45,9 @@ int main(int argc, char** argv)
 		std::cout << "Injection failed" << std::endl;
 	}
 
+	while (true)
+	{
+		Sleep(1000);
+	}
 	return 0;
 }
