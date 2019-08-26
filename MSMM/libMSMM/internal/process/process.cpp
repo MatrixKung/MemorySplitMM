@@ -57,7 +57,6 @@ namespace libMSMM::process
 	{
 		return m_ProcessId && m_hOpenedProcess;
 	}
-
 	int Process::get_id() const
 	{
 		return m_ProcessId;
@@ -76,12 +75,6 @@ namespace libMSMM::process
 	}
 	HMODULE Process::GetRemoteModule(const char* pModuleName)
 	{
-		//BOOL EnumProcessModules(
-		//	HANDLE  hProcess,
-		//	HMODULE * lphModule,
-		//	DWORD   cb,
-		//	LPDWORD lpcbNeeded
-		//);
 		constexpr auto ModuleListSize = 1000;
 		HMODULE ModuleList[ModuleListSize] = { 0 };
 		constexpr auto CB = ModuleListSize * sizeof(HMODULE);
@@ -124,8 +117,10 @@ namespace libMSMM::process
 			LOG_ERROR("K32EnumProcessModules failed!");
 			return nullptr;
 		}
-	}
 
+		//LOG_ERROR("Could not find module");
+		return nullptr;
+	}
 	uint32_t Process::GetRemoteFunction(HMODULE pModule, const char* pFunctionName)
 	{
 		// read DOS header
@@ -216,39 +211,129 @@ namespace libMSMM::process
 			if (!strcmp(FunctionName, pFunctionName))
 			{
 				auto NameOrdinal = pNameOrdinals[i];
-				auto OptFn = (uint32_t)pModule + pFunctions[NameOrdinal];
-				if (OptFn != (uint32_t)GetProcAddress(pModule, pFunctionName)) // todo - replace!!
+				auto vaFunction = pFunctions[NameOrdinal];
+				// if it is a forwarded export
+				auto IsInCodeSec = isAddressInCodeSection(pModule, vaFunction);
+				if (!IsInCodeSec)
 				{
-					// forwarded export
-					if (!ReadProcessMemory(m_hOpenedProcess, (void*)OptFn, FunctionName, 4096, nullptr))
+
+					auto pForwardFuncName = (char*)pModule + vaFunction;
+					if (!ReadProcessMemory(m_hOpenedProcess, (void*)pForwardFuncName, FunctionName, 4096, nullptr))
 					{
-						LOG_ERROR("Read forwarded export failed!");
+						LOG_ERROR("Read forwarded export name failed!");
 						return 0;
 					}
 
-					// FunctionName in format DLL.Function
-					std::string FuncName = FunctionName;
-					std::string DLLName = FuncName.substr(0, FuncName.find('.')) + ".dll";
-					FuncName = FuncName.substr(FuncName.find('.') + 1);
-
-					auto FowardModule = GetRemoteModule(DLLName.c_str());
-					if (!FowardModule)
+					if (util::isStringValid(FunctionName))
 					{
-						LOG_ERROR("could not foward function");
-					}
+						// FunctionName in format DLL.Function
+						std::string FuncName = FunctionName;
+						std::string DLLName = FuncName.substr(0, FuncName.find('.')) + ".dll";
+						FuncName = FuncName.substr(FuncName.find('.') + 1);
 
-					return GetRemoteFunction(FowardModule, FuncName.c_str());
+						auto FowardModule = GetRemoteModule(DLLName.c_str());
+						if (!FowardModule)
+						{
+							FowardModule = ll::LoadLibraryRemote(*this, DLLName.c_str());
+							if (!FowardModule)
+							{
+								LOG_ERROR("could not foward function {}: {}", DLLName.c_str(), FuncName);
+								return 0;
+							}
+						}
+
+						return GetRemoteFunction(FowardModule, FuncName.c_str());
+					}
+					else
+					{
+						uint32_t Data = 0;
+						if (!ReadProcessMemory(m_hOpenedProcess, (void*)pForwardFuncName, &Data, sizeof(uint32_t), nullptr))
+						{
+							LOG_ERROR("Read forwarded export failed!");
+							return 0;
+						}
+
+						LOG_TRACE("\t\t0x{:08x}: {}", Data, pFunctionName);
+						return Data;
+					}
 				}
-				return OptFn;
+				else if (IsInCodeSec == -1)
+				{
+					LOG_ERROR("function address was not within code sections!");
+					return 0;
+				}
+
+				LOG_TRACE("\t\t0x{:08x}: {}", (uint32_t)pModule + pFunctions[NameOrdinal], pFunctionName);
+				return (uint32_t)pModule + pFunctions[NameOrdinal];
 			}
 		}
 
-		LOG_ERROR("failed to find function!");
+		LOG_ERROR("failed to find function {}", pFunctionName);
 
 		return 0;
 	}
 	HANDLE Process::GetHandle() const
 	{
 		return m_hOpenedProcess;
+	}
+	int Process::isAddressInCodeSection(HMODULE Module, uint32_t VirtualAddr)
+	{
+		// read DOS header
+		IMAGE_DOS_HEADER DosHeader;
+		if (!ReadProcessMemory(m_hOpenedProcess, (char*)Module, &DosHeader, sizeof(IMAGE_DOS_HEADER), nullptr))
+		{
+			LOG_ERROR("Read DOS Header failed!");
+			return 0;
+		}
+
+		// read nt header
+		IMAGE_NT_HEADERS32 NTHeader;
+		if (!ReadProcessMemory(m_hOpenedProcess, (char*)Module + DosHeader.e_lfanew, &NTHeader, sizeof(IMAGE_NT_HEADERS32), nullptr))
+		{
+			LOG_ERROR("Read NT Header failed!");
+			return 0;
+		}
+
+		auto pSection = IMAGE_FIRST_SECTION((IMAGE_NT_HEADERS32*)((char*)Module + DosHeader.e_lfanew));
+
+		auto NumberofSections = NTHeader.FileHeader.NumberOfSections;
+
+		for (auto i = 0; i < NumberofSections - 1; i++)
+		{
+			IMAGE_SECTION_HEADER Section;
+			IMAGE_SECTION_HEADER NextSection;
+
+			if (!ReadProcessMemory(m_hOpenedProcess, pSection + i, &Section, sizeof(IMAGE_SECTION_HEADER), nullptr))
+			{
+				LOG_ERROR("Read section failed!");
+				return 0;
+			}
+
+			if (!ReadProcessMemory(m_hOpenedProcess, pSection + i + 1, &NextSection, sizeof(IMAGE_SECTION_HEADER), nullptr))
+			{
+				LOG_ERROR("Read section 2 failed!");
+				return 0;
+			}
+
+			if (VirtualAddr >= Section.VirtualAddress && VirtualAddr < NextSection.VirtualAddress)
+			{
+				return (Section.Characteristics & IMAGE_SCN_CNT_CODE);
+			}
+		}
+
+		IMAGE_SECTION_HEADER Section;// = pSection[NumberofSections - 1];
+
+		if (!ReadProcessMemory(m_hOpenedProcess, pSection + NumberofSections - 1, &Section, sizeof(IMAGE_SECTION_HEADER), nullptr))
+		{
+			LOG_ERROR("Read section failed!");
+			return 0;
+		}
+
+		if (VirtualAddr >= Section.VirtualAddress && VirtualAddr < Section.VirtualAddress + Section.SizeOfRawData)
+		{
+			return (Section.Characteristics & IMAGE_SCN_CNT_CODE);
+		}
+
+		return -1;
 	}
 }

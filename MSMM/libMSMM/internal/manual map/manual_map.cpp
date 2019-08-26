@@ -276,12 +276,16 @@ namespace libMSMM::mm
 			auto pModuleName = sections::VAToLocalPtr<char*>(SectionDirectory, vaModuleName);
 
 			auto pModule = Process.GetRemoteModule(pModuleName);
-			LOG_TRACE("\timporting functions from {}: 0x{:08x}", pModuleName, (uint32_t)pModule);
 			if (!pModule)
 			{
-				LOG_ERROR("could not resolve {}!", pModuleName);
-				return false;
+				pModule = ll::LoadLibraryRemote(Process, pModuleName);
+				if (!pModule)
+				{
+					LOG_ERROR("could not resolve {}!", pModuleName);
+					return false;
+				}
 			}
+			LOG_TRACE("\timporting functions from {}: 0x{:08x}", pModuleName, (uint32_t)pModule);
 
 			auto vaFirstThunk = CurrentImportDesc->FirstThunk;
 			auto vaOriginalThunk = CurrentImportDesc->OriginalFirstThunk;
@@ -296,8 +300,7 @@ namespace libMSMM::mm
 				if (pThunkData)
 				{
 					auto pFunction = Process.GetRemoteFunction(pModule, pThunkData->Name);
-					//LOG_TRACE("\t\t function {}: 0x{:08x}", pThunkData->Name, pFunction);
-
+					
 					if (!pFunction)
 					{
 						LOG_ERROR("could not resolve {} in {}!", pThunkData->Name, pModuleName);
@@ -371,11 +374,14 @@ namespace libMSMM::mm
 		auto Memory = Process.AllocateMemory(29, PAGE_EXECUTE_READWRITE);
 
 		auto pEntryPoint = sections::VAToRemotePtr(SectionDirectory, ntHeader->OptionalHeader.AddressOfEntryPoint);
+		
+		//auto pEntryPoint2 = (BOOL(__stdcall *)(DWORD, DWORD, DWORD))pEntryPoint;
+		//pEntryPoint2(0, DLL_PROCESS_ATTACH, 0);
+		
 		auto ppEntryPoint = (char*)&pEntryPoint;
 		
 		// Bytecode to call DLLEntryPoint
 		unsigned char Bytecode[] = {
-			
 			0x55,																		// push ebp
 			0x8B, 0xEC,																	// mov ebp, esp
 			0x68, 0x0, 0x0, 0x0, 0x0,													// push hinstdll (0)
@@ -390,7 +396,7 @@ namespace libMSMM::mm
 		
 		LOG_DEBUG("writing shellcode to remote");
 		Process.WriteMemory(Bytecode, Memory, 29);
-
+		
 		LOG_DEBUG("creating thread at shellcode");
 		CreateRemoteThread(Process.GetHandle(), NULL, NULL, (LPTHREAD_START_ROUTINE)Memory, NULL, NULL, NULL);
 

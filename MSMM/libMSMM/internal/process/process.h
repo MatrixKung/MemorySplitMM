@@ -20,6 +20,8 @@ namespace libMSMM::process
 		HMODULE GetRemoteModule(const char* pModuleName);
 		uint32_t GetRemoteFunction(HMODULE, const char* pFunctionName);
 		HANDLE GetHandle() const;
+
+		int isAddressInCodeSection(HMODULE Module,uint32_t VirtualAddr);
 	private:
 
 		int m_ProcessId;
