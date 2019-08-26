@@ -29,6 +29,8 @@ int main(int argc, char** argv)
 		std::istreambuf_iterator<char>()
 	);
 
+	BinaryFile.close();
+
 	if (LoadedBinary.size() == 0)
 	{
 		std::cout << "Binary file was empty!" << std::endl;
