@@ -36,7 +36,7 @@ int main(int argc, char** argv)
 		return 0;
 	}
 
-	if (libMSMM::MapImage((void*)LoadedBinary.data(), LoadedBinary.size(), Target_App_Name))
+	if (libMSMM::MapImage((void*)LoadedBinary.data(), LoadedBinary.size(), Target_App_Name, libMSMM::MAP_ALL_OPTIONS))
 	{
 		std::cout << "Successfully injected binary!" << std::endl;
 	}

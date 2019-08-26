@@ -8,6 +8,8 @@
 #include <fstream>
 #include <vector>
 #include <iterator>
+#include <algorithm>
+#include <random>
 
 // Lib headers we need
 #include <spdlog/spdlog.h>

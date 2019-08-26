@@ -32,8 +32,7 @@ namespace libMSMM::mm
 
 		return true;
 	}
-	
-	bool AllocateSections(sections::SectionDir& SectionDirectory, PIMAGE_NT_HEADERS32 ntHeader, process::Process& Process)
+	bool AllocateSections(sections::SectionDir& SectionDirectory, PIMAGE_NT_HEADERS32 ntHeader, process::Process& Process, const MappingOptions Options)
 	{
 		const auto nSectionCount = ntHeader->FileHeader.NumberOfSections;
 		const PIMAGE_SECTION_HEADER pSections = IMAGE_FIRST_SECTION(ntHeader);
@@ -43,7 +42,21 @@ namespace libMSMM::mm
 		// we know everything else is done
 		LOG_DEBUG("allocating sections");
 
+		auto Indexs = std::vector<int>();
+		Indexs.reserve(nSectionCount);
 		for (auto i = 0; i < nSectionCount; i++)
+		{
+			Indexs.push_back(i);
+		}
+
+		if (Options & LAYOUT_RANDOMISATION)
+		{
+			std::random_device rd;
+			std::mt19937 g(rd());
+			std::shuffle(Indexs.begin(), Indexs.end(), g);
+		}
+
+		for (auto i : Indexs)
 		{
 			auto Section = sections::MappedSection(pSections[i], Process);
 
@@ -74,7 +87,6 @@ namespace libMSMM::mm
 		LOG_DEBUG("allocated {} sections", SectionDirectory.size());
 		return true;
 	}
-
 	void CopySections(sections::SectionDir& SectionDirectory, void* pImage)
 	{
 		LOG_DEBUG("writing image to local sections");
@@ -92,7 +104,6 @@ namespace libMSMM::mm
 		}
 		LOG_DEBUG("all local sections written");
 	}
-
 	bool RunBasicRelocations(sections::SectionDir& SectionDirectory, PIMAGE_NT_HEADERS32 ntHeader)
 	{
 		LOG_DEBUG("starting standard relocations");
@@ -161,8 +172,7 @@ namespace libMSMM::mm
 
 		LOG_DEBUG("finsihed {} standard relocations", DebugRelocationCounter);
 		return true;
-	}
-	
+	}	
 	void RelReloc(sections::SectionDir& SectionDirectory, disassembler::instruction& Instruction, uint32_t offset)
 	{
 		const uint32_t pAddress = Instruction.address;
@@ -181,7 +191,6 @@ namespace libMSMM::mm
  			*(uint32_t*)(pAddress + offset) = relRelocated;
 		}
 	}
-
 	bool RunRelRelocation(sections::SectionDir& SectionDirectory)
 	{
 		LOG_DEBUG("running inter-section relative relocations");
@@ -251,7 +260,6 @@ namespace libMSMM::mm
 
 		return true;
 	}
-
 	bool WriteSections(sections::SectionDir& SectionDirectory)
 	{
 		for (auto& Section : SectionDirectory)
@@ -261,7 +269,6 @@ namespace libMSMM::mm
 
 		return true;
 	}
-
 	bool RunImports(PIMAGE_NT_HEADERS32 ntHeader, sections::SectionDir& SectionDirectory, process::Process& Process)
 	{
 		LOG_DEBUG("starting imports");
@@ -322,7 +329,16 @@ namespace libMSMM::mm
 		return true;
 	}
 
-	bool MapImage(void* pImage, const size_t ImageSize, process::Process& Process)
+	void WipeImports(PIMAGE_NT_HEADERS32 ntHeader, sections::SectionDir& SectionDirectory)
+	{
+		
+	}
+	void WipeRelocations(PIMAGE_NT_HEADERS32 ntHeader, sections::SectionDir& SectionDirectory)
+	{
+
+	}
+
+	bool MapImage(void* pImage, const size_t ImageSize, process::Process& Process, const MappingOptions Options)
 	{
 		LOG_DEBUG("starting map");
 
@@ -337,7 +353,7 @@ namespace libMSMM::mm
 		const auto ntHeader = PE::GetNTHeaders(pImage);
 
 		sections::SectionDir SectionDirectory;
-		if (!AllocateSections(SectionDirectory, ntHeader, Process))
+		if (!AllocateSections(SectionDirectory, ntHeader, Process, Options))
 		{
 			LOG_ERROR("AllocateSections Failed!");
 			return false;
@@ -351,6 +367,12 @@ namespace libMSMM::mm
 			return false;
 		}
 
+		if (Options & WIPE_RELOCATIONS)
+		{
+			LOG_ERROR("RELOCATION WIPE IS NOT SUPPORTED YET");
+			WipeRelocations(ntHeader, SectionDirectory);
+		}
+
 		if (!RunRelRelocation(SectionDirectory))
 		{
 			LOG_ERROR("RunBasicRelocations Failed!");
@@ -361,6 +383,12 @@ namespace libMSMM::mm
 		{
 			LOG_ERROR("RunImports Failed!");
 			return false;
+		}
+
+		if (Options & WIPE_IMPORTS)
+		{
+			LOG_ERROR("IMPORT WIPE IS NOT SUPPORTED YET");
+			WipeImports(ntHeader, SectionDirectory);
 		}
 
 		for (auto& Section : SectionDirectory)
@@ -401,6 +429,13 @@ namespace libMSMM::mm
 		CreateRemoteThread(Process.GetHandle(), NULL, NULL, (LPTHREAD_START_ROUTINE)Memory, NULL, NULL, NULL);
 
 		LOG_DEBUG("finished map");
+		
+		if (Options & CLEAR_FILE_MEMORY_FROM_LOCAL_BUFFER)
+		{
+			LOG_DEBUG("wiping local buffer");
+			memset(pImage, 0, ImageSize);
+		}
+		
 		return true;
 	}
 }

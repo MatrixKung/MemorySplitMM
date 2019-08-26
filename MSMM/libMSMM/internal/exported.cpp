@@ -2,7 +2,7 @@
 
 namespace libMSMM
 {
-	__declspec(dllexport) bool __stdcall MapImage(void* pBinary, const unsigned int BinarySize, const char* TargetAppExeName)
+	__declspec(dllexport) bool __stdcall MapImage(void* pBinary, const unsigned int BinarySize, const char* TargetAppExeName, const MappingOptions Options)
 	{
 		log::Setup( LOG_DEBUG_LEVEL );
 
@@ -13,6 +13,6 @@ namespace libMSMM
 			return false;
 		}
 
-		return mm::MapImage(pBinary, BinarySize, Process);
+		return mm::MapImage(pBinary, BinarySize, Process, Options);
 	}
 }
