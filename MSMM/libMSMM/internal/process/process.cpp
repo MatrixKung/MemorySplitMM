@@ -208,22 +208,23 @@ namespace libMSMM::process
 				return 0;
 			}
 
-			if (!strcmp(FunctionName, pFunctionName))
+			if (!strcmp(FunctionName, pFunctionName) )
 			{
+
 				auto NameOrdinal = pNameOrdinals[i];
 				auto vaFunction = pFunctions[NameOrdinal];
+
+				auto pForwardFuncName = (char*)pModule + vaFunction;
+				if (!ReadProcessMemory(m_hOpenedProcess, (void*)pForwardFuncName, FunctionName, 4096, nullptr))
+				{
+					LOG_ERROR("Read forwarded export name failed!");
+					return 0;
+				}
+
 				// if it is a forwarded export
 				auto IsInCodeSec = isAddressInCodeSection(pModule, vaFunction);
-				if (!IsInCodeSec)
+				if (!IsInCodeSec || util::isStringValid(FunctionName))
 				{
-
-					auto pForwardFuncName = (char*)pModule + vaFunction;
-					if (!ReadProcessMemory(m_hOpenedProcess, (void*)pForwardFuncName, FunctionName, 4096, nullptr))
-					{
-						LOG_ERROR("Read forwarded export name failed!");
-						return 0;
-					}
-
 					if (util::isStringValid(FunctionName))
 					{
 						// FunctionName in format DLL.Function
@@ -242,9 +243,10 @@ namespace libMSMM::process
 							}
 						}
 
+						LOG_DEBUG("\t\tforwarding {} to {}", pFunctionName, FunctionName);
 						return GetRemoteFunction(FowardModule, FuncName.c_str());
 					}
-					else
+					else if (IsInCodeSec != -1)
 					{
 						uint32_t Data = 0;
 						if (!ReadProcessMemory(m_hOpenedProcess, (void*)pForwardFuncName, &Data, sizeof(uint32_t), nullptr))
@@ -257,10 +259,11 @@ namespace libMSMM::process
 						return Data;
 					}
 				}
-				else if (IsInCodeSec == -1)
+
+				if (IsInCodeSec == -1)
 				{
-					LOG_ERROR("function address was not within code sections!");
-					return 0;
+					LOG_ERROR("function address for {} was not within module!", pFunctionName);
+					return pFunctions[NameOrdinal];
 				}
 
 				LOG_TRACE("\t\t0x{:08x}: {}", (uint32_t)pModule + pFunctions[NameOrdinal], pFunctionName);
@@ -294,8 +297,7 @@ namespace libMSMM::process
 			return 0;
 		}
 
-		auto pSection = IMAGE_FIRST_SECTION((IMAGE_NT_HEADERS32*)((char*)Module + DosHeader.e_lfanew));
-
+		auto pSection = ((PIMAGE_SECTION_HEADER) ((ULONG_PTR)((char*)Module + DosHeader.e_lfanew) + FIELD_OFFSET(IMAGE_NT_HEADERS, OptionalHeader) + NTHeader.FileHeader.SizeOfOptionalHeader ));
 		auto NumberofSections = NTHeader.FileHeader.NumberOfSections;
 
 		for (auto i = 0; i < NumberofSections - 1; i++)
