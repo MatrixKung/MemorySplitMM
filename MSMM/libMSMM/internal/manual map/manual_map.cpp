@@ -187,7 +187,7 @@ namespace libMSMM::mm
 
 		if (relRelocated != relTarget)
 		{
-			LOG_TRACE("\tREL32 RELOC: {} {} \t va=0x{:08x} org=0x{:08x} new=0x{:08x}", Instruction.mnemonic, Instruction.op_str, vaNextInstruction - Instruction.size, vaTarget, pRelocatedTarget);
+			LOG_TRACE("\tREL32 RELOC: {} {} \tva=0x{:08x} org=0x{:08x} new=0x{:08x}", Instruction.mnemonic, Instruction.op_str, vaNextInstruction - Instruction.size, vaTarget, pRelocatedTarget);
  			*(uint32_t*)(pAddress + offset) = relRelocated;
 		}
 	}
