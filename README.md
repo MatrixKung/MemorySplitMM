@@ -57,9 +57,9 @@
 ```MSMM.exe <target dll path> <target application name>```
 
 # Disclaimer
- I do not claim responsablity for the use/distribution of this applicaiton.
+ Please ensure you read and understand the license if you wish to make use of this software.
  
- This is not intended for use in malware or any other activity which may be malicious, that would be called a 'dick move' and you should feel bad for even thinking about using it to make your malware harder to detect.
+ This is not intended for use in malware or any other activity which may be malicious and/or harmful, that would be called a 'dick move' and you should feel bad for even thinking about using it to make your malware harder to detect.
  
 # Other
  If you find a proper use for this, please give credit and let me know! I would be very interested in how this method may be utilised.
