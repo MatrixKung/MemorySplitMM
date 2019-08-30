@@ -13,5 +13,5 @@ bool libMSMM::util::isStringValid(const char* pStr)
 		}
 	}
 
-	return true;
+	return strLen > 0;
 }
