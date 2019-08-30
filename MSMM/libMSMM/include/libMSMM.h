@@ -9,7 +9,7 @@ namespace libMSMM
 		WIPE_RELOCATIONS = (1 << 2),
 		LAYOUT_RANDOMISATION = (1 << 3),
 
-		MAP_ALL_OPTIONS = CLEAR_FILE_MEMORY_FROM_LOCAL_BUFFER | WIPE_IMPORTS | WIPE_RELOCATIONS | LAYOUT_RANDOMISATION
+		MAP_ALL_OPTIONS = 0xFFFFFFFF
 	};
 
 	extern bool __stdcall MapImage(void* pBinary, const unsigned int BinarySize, const char* TargetAppExeName, const MappingOptions Options);
