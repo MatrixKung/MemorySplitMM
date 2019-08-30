@@ -19,7 +19,7 @@
  
  >libMSMM does not support module exports
  
- >libMSMM does not support the library making use of functions that take a module base address, and the base address passed into DLLMain is NULL
+ >libMSMM does not support the library making use of functions that take a module base address for the module you load, and the base address passed into DLLMain is NULL.
  
  >libMSMM does not support module unloading, due to the nature of how the memory is laid out
  
