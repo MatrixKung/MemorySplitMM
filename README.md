@@ -1,5 +1,5 @@
 # libMSMM
-## CURRENTLY UNDER DEVELOPMENT AND BARELY FUNCTIONAL, DO NOT EXPECT THIS TO WORK PROPERLY ANYTIME SOON
+## CURRENTLY UNDER DEVELOPMENT AND BARELY FUNCTIONAL, DO NOT EXPECT THIS TO WORK PROPERLY ANYTIME SOON - Expect documentation to be poor/none for some sections and ugly temp code in other sections!
  A Manual mapping library with added protection against reverse engineering by splitting the target module up across the target process's memory. The primary use would be as an extra layer of DRM for your sensitive application.
 
 ## Use
